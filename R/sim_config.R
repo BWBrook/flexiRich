@@ -1,8 +1,14 @@
 .assert_scalar_integer <- function(x, name, lower, upper = Inf) {
-  valid <- length(x) == 1L && !is.na(x) && is.numeric(x) &&
-    x == as.integer(x) && x >= lower && x <= upper
+  valid <- length(x) == 1L && is.numeric(x) && !is.complex(x) &&
+    !is.na(x) && is.finite(x) && x == trunc(x) &&
+    x >= -.Machine$integer.max && x <= .Machine$integer.max &&
+    x >= lower && x <= upper
   if (!valid) {
-    stop(name, " must be one integer in [", lower, ", ", upper, "].", call. = FALSE)
+    stop(
+      name, " must be one finite, representable integer in [",
+      lower, ", ", upper, "].",
+      call. = FALSE
+    )
   }
   as.integer(x)
 }
