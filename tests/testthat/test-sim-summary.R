@@ -91,6 +91,70 @@ testthat::test_that("validation enforces the object contract and configured key 
   )
 })
 
+testthat::test_that("validation requires the exact canonical config field contract", {
+  sim <- .make_small_sim(seed = 212L)
+
+  reordered <- sim
+  reordered$config <- reordered$config[rev(names(reordered$config))]
+  class(reordered$config) <- class(sim$config)
+  testthat::expect_error(
+    validate_flexirich_sim(reordered),
+    "config field contract",
+    fixed = TRUE
+  )
+
+  unexpected <- sim
+  unexpected$config$unexpected <- TRUE
+  testthat::expect_error(
+    validate_flexirich_sim(unexpected),
+    "config field contract",
+    fixed = TRUE
+  )
+})
+
+testthat::test_that("validation requires character identifier columns", {
+  sim <- .make_small_sim(seed = 213L)
+  identifier_fields <- list(
+    species = "species_id",
+    cameras = "camera_id",
+    rates = c("species_id", "camera_id"),
+    effort_daily = "camera_id",
+    effort_weekly = c("camera_id", "occasion_id"),
+    detections = c("species_id", "camera_id", "occasion_id")
+  )
+
+  for (component in names(identifier_fields)) {
+    for (field in identifier_fields[[component]]) {
+      broken <- sim
+      broken[[component]][[field]] <- factor(
+        broken[[component]][[field]]
+      )
+      testthat::expect_error(
+        validate_flexirich_sim(broken),
+        paste0(
+          component,
+          " identifier column ",
+          field,
+          " must be character"
+        ),
+        fixed = TRUE,
+        info = paste("factor identifier:", component, field)
+      )
+    }
+  }
+})
+
+testthat::test_that("validation requires the canonical simulator version", {
+  sim <- .make_small_sim(seed = 214L)
+  sim$metadata$simulator_version <- "9.9.9"
+
+  testthat::expect_error(
+    validate_flexirich_sim(sim),
+    "simulator_version must equal 0.1.0",
+    fixed = TRUE
+  )
+})
+
 testthat::test_that("validation reconstructs daily and weekly effort exactly", {
   sim <- .make_small_sim(seed = 201L)
 

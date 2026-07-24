@@ -8,6 +8,19 @@
   }
 }
 
+.validate_identifier_contract <- function(table, name, columns) {
+  for (column in columns) {
+    if (!is.character(table[[column]])) {
+      .stop_invalid_sim(paste0(
+        name,
+        " identifier column ",
+        column,
+        " must be character."
+      ))
+    }
+  }
+}
+
 .combined_key <- function(data, columns) {
   do.call(paste, c(unname(data[columns]), sep = "\r"))
 }
@@ -23,6 +36,15 @@ validate_flexirich_sim <- function(sim) {
   )
   if (!identical(names(sim), required)) {
     .stop_invalid_sim("sim has an invalid component contract.")
+  }
+
+  canonical_config_fields <- names(formals(flexirich_sim_config))
+  if (!is.list(sim$config) ||
+      !identical(names(sim$config), canonical_config_fields)) {
+    .stop_invalid_sim(paste0(
+      "config field contract must exactly match ",
+      "flexirich_sim_config()."
+    ))
   }
 
   config <- tryCatch(
@@ -92,6 +114,27 @@ validate_flexirich_sim <- function(sim) {
         c("simulator_version", "seed", "generated_at")
       )) {
     .stop_invalid_sim("metadata component contract is invalid.")
+  }
+  if (!identical(sim$metadata$simulator_version, "0.1.0")) {
+    .stop_invalid_sim(
+      "metadata simulator_version must equal 0.1.0."
+    )
+  }
+
+  identifier_fields <- list(
+    species = "species_id",
+    cameras = "camera_id",
+    rates = c("species_id", "camera_id"),
+    effort_daily = "camera_id",
+    effort_weekly = c("camera_id", "occasion_id"),
+    detections = c("species_id", "camera_id", "occasion_id")
+  )
+  for (component in names(identifier_fields)) {
+    .validate_identifier_contract(
+      sim[[component]],
+      component,
+      identifier_fields[[component]]
+    )
   }
 
   expected_species <- sprintf(
