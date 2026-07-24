@@ -1,0 +1,310 @@
+---
+title: "Goal 001: minimum viable FlexiRich-G simulator"
+subtitle: "Deterministic illustrated acceptance scenario"
+format:
+  html:
+    toc: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+for (path in sort(list.files("../R", pattern = "\\.R$", full.names = TRUE))) {
+  source(path, local = FALSE)
+}
+
+quiet_theme <- ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(
+    panel.grid.minor = ggplot2::element_blank(),
+    plot.title.position = "plot",
+    plot.title = ggplot2::element_text(face = "bold"),
+    axis.title = ggplot2::element_text(colour = "#333333")
+  )
+```
+
+## Scenario
+
+This is a deterministic, explanatory simulation shaped like the planned
+Judbury design: 30 candidate species, 20 true grid members, nine cameras and
+208 seven-day occasions. All operational outages are synthetic. This is not
+estimator validation or an empirical Judbury fit, and no empirical camera data
+are used.
+
+```{r}
+#| label: simulate
+config <- flexirich_sim_config(seed = 20260723L)
+sim <- simulate_flexirich_g(config)
+validate_flexirich_sim(sim)
+
+sim_summary <- summary(sim)
+curve <- discovery_curve(sim)
+detection_frequency <- sim$detections |>
+  dplyr::group_by(species_id, member) |>
+  dplyr::summarise(
+    sampled_camera_weeks = sum(sampled),
+    detected_camera_weeks = sum(detected == 1L, na.rm = TRUE),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    detection_frequency = detected_camera_weeks / sampled_camera_weeks,
+    membership_label = factor(
+      member,
+      levels = c(FALSE, TRUE),
+      labels = c("Not a true grid member", "True grid member")
+    )
+  )
+
+stopifnot(
+  identical(config$candidate_pool_size, 30L),
+  identical(config$true_richness, 20L),
+  identical(config$n_cameras, 9L),
+  identical(config$n_occasions, 208L),
+  identical(config$occasion_days, 7L),
+  identical(config$seed, 20260723L),
+  sim_summary$observed_richness >= 0L,
+  sim_summary$observed_richness <= sim_summary$true_richness,
+  identical(sim_summary$true_richness, 20L),
+  length(unique(sim$effort_weekly$camera_id)) == 9L,
+  all(sim$effort_weekly$active_days %in% 0:7),
+  any(sim$effort_weekly$active_days < 7L),
+  all(is.finite(sim$rates$encounter_rate)),
+  all(sim$rates$encounter_rate > 0),
+  diff(range(sim$rates$encounter_rate)) > 0,
+  all(detection_frequency$sampled_camera_weeks > 0L),
+  all(
+    detection_frequency$detected_camera_weeks <=
+      detection_frequency$sampled_camera_weeks
+  ),
+  all(detection_frequency$detection_frequency >= 0),
+  all(detection_frequency$detection_frequency <= 1),
+  nrow(curve) == 208L,
+  all(diff(curve$cumulative_richness) >= 0L),
+  all(curve$cumulative_richness <= sim$truth$true_richness),
+  identical(
+    tail(curve$cumulative_richness, 1L),
+    sim$truth$observed_richness
+  )
+)
+
+knitr::kable(
+  sim_summary,
+  digits = 3,
+  caption = "Deterministic scenario summary"
+)
+```
+
+## Operational effort
+
+```{r}
+#| label: fig-effort
+#| fig-width: 10
+#| fig-height: 4.8
+#| fig-alt: "Heatmap of active days per week for nine synthetic cameras over 208 weekly occasions, with lighter cells showing simulated outages."
+effort_plot_data <- sim$effort_weekly |>
+  dplyr::mutate(
+    camera_id = factor(camera_id, levels = rev(unique(camera_id)))
+  )
+
+ggplot2::ggplot(
+  effort_plot_data,
+  ggplot2::aes(x = occasion_start, y = camera_id, fill = active_days)
+) +
+  ggplot2::geom_tile(width = 7, height = 0.9) +
+  ggplot2::scale_fill_gradient(
+    low = "#f7fbff",
+    high = "#08519c",
+    limits = c(0, 7),
+    breaks = c(0, 2, 4, 6, 7)
+  ) +
+  ggplot2::scale_x_date(
+    date_breaks = "6 months",
+    date_labels = "%b\n%Y",
+    expand = ggplot2::expansion(mult = c(0, 0))
+  ) +
+  ggplot2::labs(
+    x = "Weekly occasion start",
+    y = "Synthetic camera",
+    fill = "Active days\nper week",
+    title = "Weekly operational effort across nine synthetic cameras",
+    subtitle = "Lighter cells show synthetic outages; full operation is 7 active camera-days."
+  ) +
+  quiet_theme +
+  ggplot2::theme(panel.grid = ggplot2::element_blank())
+```
+
+## Species encounter heterogeneity
+
+Membership is assigned independently of encounter-rate effects in the
+simulator. The membership-coloured rug marks below are therefore descriptive
+labels only, not a causal or fitted group comparison.
+
+```{r}
+#| label: fig-rates
+#| fig-width: 8
+#| fig-height: 4.8
+#| fig-alt: "Histogram on a logarithmic horizontal scale showing heterogeneous positive baseline encounter rates for 30 candidate species, with rug marks identifying independently assigned membership labels."
+species_plot_data <- sim$species |>
+  dplyr::mutate(
+    baseline_rate = exp(alpha),
+    membership_label = factor(
+      member,
+      levels = c(FALSE, TRUE),
+      labels = c("Not a true grid member", "True grid member")
+    )
+  )
+
+ggplot2::ggplot(
+  species_plot_data,
+  ggplot2::aes(x = baseline_rate)
+) +
+  ggplot2::geom_histogram(
+    bins = 12,
+    fill = "#8aa6b8",
+    colour = "white",
+    linewidth = 0.3
+  ) +
+  ggplot2::geom_rug(
+    ggplot2::aes(colour = membership_label),
+    linewidth = 0.8,
+    alpha = 0.9
+  ) +
+  ggplot2::scale_x_log10() +
+  ggplot2::scale_colour_manual(
+    values = c(
+      "Not a true grid member" = "#6b6b6b",
+      "True grid member" = "#245b8a"
+    )
+  ) +
+  ggplot2::labs(
+    x = "Baseline encounter rate per active camera-day (log scale)",
+    y = "Candidate species per bin",
+    colour = "Simulation label",
+    title = "Positive, heterogeneous baseline encounter rates",
+    subtitle = "Membership is independent by design; rug colours label this draw only."
+  ) +
+  quiet_theme
+```
+
+## Binary-detection frequency
+
+For each candidate species, the numerator is the number of sampled camera-week
+cells with a binary detection and the denominator is the number of camera-week
+cells with at least one active day. Zero-effort cells are excluded rather than
+treated as non-detections.
+
+```{r}
+#| label: fig-detection-frequency
+#| fig-width: 8
+#| fig-height: 6.5
+#| fig-alt: "Horizontal dot plot of observed binary-detection frequency for each of 30 candidate species, calculated over camera-week cells with positive operational effort."
+detection_plot_data <- detection_frequency |>
+  dplyr::arrange(detection_frequency, species_id) |>
+  dplyr::mutate(
+    species_id = factor(species_id, levels = species_id)
+  )
+
+ggplot2::ggplot(
+  detection_plot_data,
+  ggplot2::aes(y = species_id)
+) +
+  ggplot2::geom_segment(
+    ggplot2::aes(
+      x = 0,
+      xend = detection_frequency,
+      yend = species_id
+    ),
+    colour = "#d9d9d9",
+    linewidth = 0.6
+  ) +
+  ggplot2::geom_point(
+    ggplot2::aes(
+      x = detection_frequency,
+      colour = membership_label,
+      shape = membership_label
+    ),
+    size = 2.4
+  ) +
+  ggplot2::scale_x_continuous(
+    labels = function(x) sprintf("%.1f%%", 100 * x),
+    expand = ggplot2::expansion(mult = c(0.02, 0.05))
+  ) +
+  ggplot2::scale_colour_manual(
+    values = c(
+      "Not a true grid member" = "#6b6b6b",
+      "True grid member" = "#245b8a"
+    )
+  ) +
+  ggplot2::scale_shape_manual(
+    values = c(
+      "Not a true grid member" = 1,
+      "True grid member" = 16
+    )
+  ) +
+  ggplot2::labs(
+    x = "Detected sampled camera-weeks (%)",
+    y = "Candidate species",
+    colour = "Simulation label",
+    shape = "Simulation label",
+    title = "Observed binary-detection frequency by candidate species",
+    subtitle = "Nonmembers have structural zero detection by design.",
+    caption = paste(
+      "Frequency = detected camera-weeks / camera-weeks with positive effort;",
+      "zero-effort cells are excluded."
+    )
+  ) +
+  quiet_theme +
+  ggplot2::theme(
+    legend.position = "bottom",
+    panel.grid.major.y = ggplot2::element_blank()
+  )
+```
+
+## Discovery trajectory
+
+```{r}
+#| label: fig-discovery
+#| fig-width: 10
+#| fig-height: 4.8
+#| fig-alt: "Chronological step plot of cumulative observed richness over 208 simulated weekly occasions, with a dashed horizontal reference at the known true richness of 20."
+ggplot2::ggplot(
+  curve,
+  ggplot2::aes(x = occasion_start, y = cumulative_richness)
+) +
+  ggplot2::geom_hline(
+    yintercept = sim$truth$true_richness,
+    colour = "#777777",
+    linetype = "dashed",
+    linewidth = 0.7
+  ) +
+  ggplot2::geom_step(
+    colour = "#1f4e79",
+    linewidth = 0.9
+  ) +
+  ggplot2::scale_x_date(
+    date_breaks = "6 months",
+    date_labels = "%b\n%Y"
+  ) +
+  ggplot2::scale_y_continuous(
+    breaks = seq(0, sim$truth$true_richness, by = 5),
+    limits = c(0, sim$truth$true_richness + 1),
+    expand = ggplot2::expansion(mult = c(0, 0))
+  ) +
+  ggplot2::labs(
+    x = "Weekly occasion start",
+    y = "Cumulative observed richness",
+    title = "Cumulative species discovery through 208 simulated weeks",
+    subtitle = "Dark blue is observed discovery; dashed grey is the known true richness (20)."
+  ) +
+  quiet_theme
+```
+
+## Acceptance interpretation
+
+For this deterministic draw, the final cumulative discovery count agrees with
+the observed-richness summary and does not exceed the known true richness. The
+figures make synthetic effort gaps, encounter-rate heterogeneity and discovery
+timing inspectable. They do not show that any richness estimator is unbiased,
+calibrated or robust to misspecification; no estimator is fitted here.

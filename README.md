@@ -8,7 +8,14 @@ camera-detectable species richness from a finite candidate pool.
 ```sh
 Rscript bootstrap_env.R
 Rscript scripts/run_tests.R
-quarto render analysis/goal001_simulator.qmd --output-dir outputs/goal001
+```
+
+The illustrated acceptance scenario is a deterministic explanatory simulation,
+not estimator validation or an empirical fit. Render it from the repository
+root with:
+
+```sh
+quarto render analysis/goal001_simulator.qmd --output-dir ../outputs/goal001
 ```
 
 Generated artefacts are written under `outputs/` and are not committed.

@@ -1162,7 +1162,7 @@ Those questions begin in Goal 002.
 Run:
 
 ```bash
-quarto render analysis/goal001_simulator.qmd --output-dir outputs/goal001
+quarto render analysis/goal001_simulator.qmd --output-dir ../outputs/goal001
 test -s outputs/goal001/goal001_simulator.html
 ```
 
@@ -1208,7 +1208,7 @@ Run:
 
 ```bash
 Rscript scripts/run_tests.R
-quarto render analysis/goal001_simulator.qmd --output-dir outputs/goal001
+quarto render analysis/goal001_simulator.qmd --output-dir ../outputs/goal001
 Rscript -e 'renv::status()'
 git status --short
 ```
