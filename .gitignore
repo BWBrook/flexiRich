@@ -1,1 +1,9 @@
 .worktrees/
+.Rproj.user/
+.Rhistory
+.RData
+.Ruserdata
+renv/library/
+renv/staging/
+outputs/
+.quarto/
