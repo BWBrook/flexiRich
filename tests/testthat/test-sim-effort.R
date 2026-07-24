@@ -23,6 +23,21 @@ testthat::test_that("daily effort has complete ordered camera-date coverage", {
   )
 })
 
+testthat::test_that("camera ordering follows configured position at 100 cameras", {
+  config <- flexirich_sim_config(
+    n_cameras = 100L,
+    n_occasions = 1L,
+    seed = 101L
+  )
+  expected_cameras <- sprintf("cam_%02d", seq_len(config$n_cameras))
+
+  daily <- simulate_daily_effort(config)
+  weekly <- aggregate_weekly_effort(daily, config)
+
+  testthat::expect_identical(unique(daily$camera_id), expected_cameras)
+  testthat::expect_identical(unique(weekly$camera_id), expected_cameras)
+})
+
 testthat::test_that("configured failure and repair probabilities control operation", {
   failure_config <- flexirich_sim_config(
     n_cameras = 1L,
@@ -115,6 +130,7 @@ testthat::test_that("supplied daily effort is validated and ordered", {
   validated <- validate_daily_effort(supplied, config)
 
   testthat::expect_s3_class(validated, "tbl_df")
+  testthat::expect_type(validated$operating, "integer")
   testthat::expect_identical(
     validated$camera_id,
     rep(expected_cameras, each = length(expected_dates))
@@ -160,6 +176,71 @@ testthat::test_that("supplied daily effort is validated and ordered", {
     "complete configured camera-date grid",
     fixed = TRUE
   )
+})
+
+testthat::test_that("supplied binary operating types canonicalize to integer", {
+  config <- flexirich_sim_config(n_cameras = 1L, n_occasions = 1L)
+  binary <- rep(c(0L, 1L), length.out = 7L)
+  supplied <- tibble::tibble(
+    camera_id = rep("cam_01", 7L),
+    date = seq(config$start_date, by = "day", length.out = 7L),
+    operating = binary
+  )
+  accepted <- list(
+    integer = binary,
+    double = as.double(binary),
+    logical = as.logical(binary)
+  )
+
+  for (input_type in names(accepted)) {
+    candidate <- supplied
+    candidate$operating <- accepted[[input_type]]
+
+    validated <- validate_daily_effort(candidate, config)
+
+    testthat::expect_identical(
+      typeof(validated$operating),
+      "integer",
+      info = paste("accepted input type:", input_type)
+    )
+    testthat::expect_identical(
+      validated$operating,
+      binary,
+      info = paste("accepted input type:", input_type)
+    )
+  }
+})
+
+testthat::test_that("invalid supplied operating types and values are rejected", {
+  config <- flexirich_sim_config(n_cameras = 1L, n_occasions = 1L)
+  binary <- rep(c(0L, 1L), length.out = 7L)
+  supplied <- tibble::tibble(
+    camera_id = rep("cam_01", 7L),
+    date = seq(config$start_date, by = "day", length.out = 7L),
+    operating = binary
+  )
+  invalid <- list(
+    character = as.character(binary),
+    factor = factor(binary, levels = c(0L, 1L)),
+    missing = replace(binary, 1L, NA_integer_),
+    positive_infinity = replace(as.double(binary), 1L, Inf),
+    negative_infinity = replace(as.double(binary), 1L, -Inf),
+    not_a_number = replace(as.double(binary), 1L, NaN),
+    below_zero = replace(as.double(binary), 1L, -1),
+    above_one = replace(as.double(binary), 1L, 2),
+    fractional = replace(as.double(binary), 1L, 0.5)
+  )
+
+  for (invalid_case in names(invalid)) {
+    candidate <- supplied
+    candidate$operating <- invalid[[invalid_case]]
+
+    testthat::expect_error(
+      validate_daily_effort(candidate, config),
+      "effort_daily\\$operating",
+      info = paste("invalid operating case:", invalid_case)
+    )
+  }
 })
 
 testthat::test_that("zero-operation occasions remain explicit", {

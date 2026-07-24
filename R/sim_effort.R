@@ -19,9 +19,17 @@ validate_daily_effort <- function(effort_daily, config) {
   if (!inherits(effort_daily$date, "Date")) {
     stop("effort_daily$date must have class Date.", call. = FALSE)
   }
-  if (!all(effort_daily$operating %in% c(0L, 1L))) {
+  operating <- effort_daily$operating
+  valid_operating_type <- is.numeric(operating) || is.logical(operating)
+  if (!valid_operating_type ||
+      anyNA(operating) ||
+      any(!is.finite(operating)) ||
+      !all(operating %in% c(0L, 1L))) {
     stop(
-      "effort_daily$operating must contain only 0 and 1.",
+      paste0(
+        "effort_daily$operating must contain only 0 and 1, supplied as ",
+        "finite numeric or logical values without missing values."
+      ),
       call. = FALSE
     )
   }
@@ -40,11 +48,9 @@ validate_daily_effort <- function(effort_daily, config) {
     )
   }
 
-  dplyr::arrange(
-    tibble::as_tibble(effort_daily),
-    camera_id,
-    date
-  )
+  tibble::as_tibble(effort_daily) |>
+    dplyr::mutate(operating = as.integer(operating)) |>
+    dplyr::arrange(match(camera_id, expected_cameras), date)
 }
 
 simulate_daily_effort <- function(config) {
@@ -91,6 +97,7 @@ simulate_daily_effort <- function(config) {
 
 aggregate_weekly_effort <- function(effort_daily, config) {
   config <- validate_sim_config(config)
+  expected_cameras <- sprintf("cam_%02d", seq_len(config$n_cameras))
   daily <- validate_daily_effort(effort_daily, config)
 
   daily |>
@@ -106,6 +113,9 @@ aggregate_weekly_effort <- function(effort_daily, config) {
       active_days = as.integer(sum(operating)),
       .by = c(camera_id, occasion_id, occasion_index)
     ) |>
-    dplyr::arrange(camera_id, occasion_index) |>
+    dplyr::arrange(
+      match(camera_id, expected_cameras),
+      occasion_index
+    ) |>
     dplyr::select(-occasion_index)
 }
