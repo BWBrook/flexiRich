@@ -1,6 +1,6 @@
 # Goal 001 — Minimum viable FlexiRich-G simulator
 
-Status: proposed for PI review  
+Status: approved for implementation
 Date defined: 2026-07-23
 
 ## Objective
@@ -75,6 +75,12 @@ with the baseline effects
 b_j \sim \operatorname{Normal}(0,\sigma_b).
 \]
 
+Exactly \(S_{\mathrm{true}}\) members are selected uniformly without
+replacement from the \(C\) candidates. In the baseline, membership is
+generated independently of \(\alpha_i\), \(b_j\), and operational effort.
+Relationships between membership and detectability belong to later
+misspecification scenarios.
+
 The effort-aware detection probability is
 
 \[
@@ -140,8 +146,9 @@ One simulation run must return a structured object containing:
 - Configurable \(C\), \(S_{\mathrm{true}}\), \(J\), \(K\), encounter-rate
   heterogeneity, camera heterogeneity, and effort completeness.
 - Synthetic daily operational histories and aggregation to seven-day effort.
-- Optional ingestion of a supplied effort matrix without embedding Judbury
-  observations or Huon Ridge data.
+- Optional ingestion of a supplied day-resolved effort table containing
+  exactly one binary operating state for every configured camera-date
+  combination, without embedding Judbury observations or Huon Ridge data.
 - A small illustrated Judbury-shaped scenario with nine nominal cameras,
   approximately four years (208 seven-day occasions), and synthetic outages.
 - Deterministic unit tests and scientific invariant checks.
@@ -175,17 +182,26 @@ Goal 001 passes when all of the following are demonstrated:
 3. Non-members (\(g_i=0\)) are never detected.
 4. Zero-effort camera-occasions are explicitly unsampled and cannot generate
    detections.
-5. All detection probabilities lie in \([0,1]\), all encounter rates are
+5. Aggregated effort \(E_{jk}\) equals the exact sum of the corresponding
+   day-resolved operating states.
+6. Returned encounter rates and probabilities independently reproduce
+   \(r_{ij}=\exp(\alpha_i+b_j)\),
+   \(p_{ijk}=1-\exp(-E_{jk}r_{ij})\), and the observation probability
+   \(g_i p_{ijk}\).
+7. Seed-controlled Bernoulli draws reproduce the returned detection history,
+   demonstrating that observations were sampled from the returned
+   probabilities.
+8. All detection probabilities lie in \([0,1]\), all encounter rates are
    positive, and every sampled observation is binary.
-6. Detection probability is analytically non-decreasing with operational
+9. Detection probability is analytically non-decreasing with operational
    effort for fixed encounter rate.
-7. Observed richness never exceeds true richness, and true richness never
+10. Observed richness never exceeds true richness, and true richness never
    exceeds candidate-pool size.
-8. The truth record is sufficient to calculate missed-member and false-member
+11. The truth record is sufficient to calculate missed-member and false-member
    classifications without reconstructing latent values.
-9. At least one low-detection and one high-detection scenario run successfully
+12. At least one low-detection and one high-detection scenario run successfully
    and show the expected qualitative difference in observed richness.
-10. Automated tests pass, and the illustrated scenario can be regenerated
+13. Automated tests pass, and the illustrated scenario can be regenerated
     from one documented command.
 
 The illustrated scenario is explanatory evidence, not a statistical validation
@@ -195,7 +211,9 @@ study.
 
 Verification will include:
 
-- unit tests for dimensions, types, bounds and deterministic behaviour;
+- unit tests for dimensions, types, bounds, deterministic behaviour, exact
+  effort aggregation, and independent reconstruction of every generative
+  equation;
 - targeted edge cases, including no effort, complete effort, no true species,
   and all candidate species present where mathematically supported;
 - independent recomputation of true and observed richness from returned
