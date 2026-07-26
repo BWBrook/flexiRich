@@ -411,3 +411,56 @@ testthat::test_that("test oracles do not call production mathematics", {
 
   testthat::expect_length(intersect(called, production_functions), 0L)
 })
+
+testthat::test_that("Stan source marginalises species membership", {
+  source_root <- if (dir.exists("R")) "." else file.path("..", "..")
+  stan_path <- file.path(source_root, "stan", "flexirich_g.stan")
+  exists <- file.exists(stan_path)
+
+  testthat::expect_true(
+    exists,
+    info = "stan/flexirich_g.stan must provide the inference kernel"
+  )
+  if (!exists) {
+    return(invisible())
+  }
+
+  stan_source <- readLines(stan_path, warn = FALSE)
+  stan_text <- paste(stan_source, collapse = "\n")
+
+  testthat::expect_match(stan_text, "log_mix")
+  testthat::expect_match(stan_text, "bernoulli_rng")
+  testthat::expect_match(stan_text, "binomial_rng")
+  testthat::expect_match(stan_text, "matrix\\[J, B\\] Q")
+
+  parameters_start <- which(trimws(stan_source) == "parameters {")
+  transformed_start <- which(
+    trimws(stan_source) == "transformed parameters {"
+  )
+  testthat::expect_length(parameters_start, 1L)
+  testthat::expect_length(transformed_start, 1L)
+
+  if (length(parameters_start) == 1L &&
+      length(transformed_start) == 1L &&
+      transformed_start > parameters_start + 1L) {
+    parameters_text <- paste(
+      stan_source[seq.int(
+        parameters_start + 1L,
+        transformed_start - 1L
+      )],
+      collapse = "\n"
+    )
+    membership_parameter <- paste0(
+      "\\b(g|g_raw|g_member|member|membership|",
+      "presence|z_raw)\\b"
+    )
+
+    testthat::expect_false(
+      grepl(membership_parameter, parameters_text, perl = TRUE),
+      info = paste0(
+        "membership must be marginalised; no discrete or continuous ",
+        "pseudo-presence parameter is allowed"
+      )
+    )
+  }
+})
