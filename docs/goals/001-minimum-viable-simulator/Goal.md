@@ -1,6 +1,6 @@
 # Goal 001 — Minimum viable FlexiRich-G simulator
 
-Status: approved for implementation
+Status: complete — accepted for Goal 002 planning
 Date defined: 2026-07-23
 
 ## Objective
