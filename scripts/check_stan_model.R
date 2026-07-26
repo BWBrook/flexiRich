@@ -121,6 +121,122 @@ cmdstanr::write_stan_json(
   init_file
 )
 
+lower_tail_mu <- c(-1000, -999)
+lower_tail_omega <- 0.6
+lower_tail_log_prob <- numeric(length(lower_tail_mu))
+lower_tail_r_target <- numeric(length(lower_tail_mu))
+
+for (point in seq_along(lower_tail_mu)) {
+  parameter_file <- file.path(
+    run_dir,
+    paste0("lower-tail-parameters-", point, ".json")
+  )
+  log_prob_file <- file.path(
+    run_dir,
+    paste0("lower-tail-log-prob-", point, ".csv")
+  )
+  profile_file <- file.path(
+    run_dir,
+    paste0("lower-tail-profile-", point, ".csv")
+  )
+  cmdstanr::write_stan_json(
+    list(
+      omega = lower_tail_omega,
+      mu_alpha = lower_tail_mu[point],
+      sigma_alpha = 0.8,
+      z_alpha = rep(0, fixture$data$stan_data$C),
+      sigma_camera = 0.2,
+      z_camera = array(0, dim = fixture$data$stan_data$B)
+    ),
+    parameter_file
+  )
+
+  log_prob_run <- processx::run(
+    command = normalizePath(executable, mustWork = TRUE),
+    args = c(
+      "log_prob",
+      paste0(
+        "constrained_params=",
+        normalizePath(parameter_file, mustWork = TRUE)
+      ),
+      "jacobian=false",
+      "data",
+      paste0("file=", normalizePath(data_file, mustWork = TRUE)),
+      "output",
+      paste0("file=", normalizePath(log_prob_file, mustWork = FALSE)),
+      "sig_figs=18",
+      "refresh=0",
+      paste0(
+        "profile_file=",
+        normalizePath(profile_file, mustWork = FALSE)
+      )
+    ),
+    echo = FALSE,
+    error_on_status = FALSE
+  )
+  if (log_prob_run$status != 0L) {
+    stop(
+      "CmdStan lower-tail log_prob failed: ",
+      log_prob_run$stderr,
+      call. = FALSE
+    )
+  }
+
+  log_prob_output <- utils::read.csv(
+    log_prob_file,
+    comment.char = "#",
+    check.names = FALSE
+  )
+  if (nrow(log_prob_output) != 1L ||
+      !"lp__" %in% names(log_prob_output)) {
+    stop(
+      "CmdStan lower-tail log_prob output has an invalid schema.",
+      call. = FALSE
+    )
+  }
+  lower_tail_log_prob[point] <- log_prob_output$lp__[[1L]]
+
+  alpha <- rep(lower_tail_mu[point], fixture$data$stan_data$C)
+  camera_effect <- rep(0, fixture$data$stan_data$J)
+  member_ll <- member_log_likelihood(
+    fixture$data,
+    alpha,
+    camera_effect
+  )
+  lower_tail_r_target[point] <-
+    stats::dnorm(
+      lower_tail_mu[point],
+      mean = prior$mu_alpha_location,
+      sd = prior$mu_alpha_scale,
+      log = TRUE
+    ) +
+    marginal_membership_log_likelihood(
+      member_ll,
+      fixture$data$stan_data$detected_ever,
+      lower_tail_omega
+    )
+}
+
+if (any(!is.finite(lower_tail_log_prob))) {
+  stop(
+    "CmdStan lower-tail log probabilities must remain finite.",
+    call. = FALSE
+  )
+}
+stan_density_delta <- diff(lower_tail_log_prob)
+r_density_delta <- diff(lower_tail_r_target)
+# Constants and all fixed-parameter prior terms cancel in this delta. With
+# 18-digit CSV output, 1e-8 is a conservative absolute floating-point bound
+# and matches the existing Stan-to-R transformed-quantity tolerance.
+lower_tail_tolerance <- 1e-8
+if (abs(stan_density_delta - r_density_delta) >
+    lower_tail_tolerance) {
+  stop(
+    "Stan and R lower-tail target-density deltas differ by more than 1e-8.",
+    call. = FALSE
+  )
+}
+
 fit <- suppressMessages(model$sample(
   data = data_file,
   seed = 2505L,

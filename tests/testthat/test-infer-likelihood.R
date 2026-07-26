@@ -464,3 +464,27 @@ testthat::test_that("Stan source marginalises species membership", {
     )
   }
 })
+
+testthat::test_that("Stan detection kernel guards its extreme lower tail", {
+  source_root <- if (dir.exists("R")) "." else file.path("..", "..")
+  stan_text <- paste(
+    readLines(
+      file.path(source_root, "stan", "flexirich_g.stan"),
+      warn = FALSE
+    ),
+    collapse = "\n"
+  )
+
+  testthat::expect_match(
+    stan_text,
+    paste0(
+      "if\\s*\\(log_hazard\\s*<\\s*-700\\)\\s*\\{\\s*",
+      "return\\s+log_hazard\\s*;"
+    ),
+    perl = TRUE,
+    info = paste0(
+      "the Stan detection kernel must retain the finite lower-tail ",
+      "limit before exp() underflows"
+    )
+  )
+})

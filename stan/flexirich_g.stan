@@ -3,6 +3,9 @@ functions {
     if (log_hazard > 20) {
       return 0;
     }
+    if (log_hazard < -700) {
+      return log_hazard;
+    }
     return log1m_exp(-exp(log_hazard));
   }
 
