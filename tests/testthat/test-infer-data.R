@@ -443,6 +443,19 @@ testthat::test_that("active days are finite whole numbers in zero through seven"
     ),
     "active_days"
   )
+
+  logical_effort <- inputs$effort_weekly
+  logical_effort$active_days <- logical(
+    nrow(logical_effort)
+  )
+  testthat::expect_error(
+    prepare_flexirich_g_data(
+      inputs$candidate_pool,
+      logical_effort,
+      inputs$detections
+    ),
+    "active_days"
+  )
 })
 
 testthat::test_that("detection outcomes obey binary and effort-missingness rules", {
@@ -494,6 +507,44 @@ testthat::test_that("detection outcomes obey binary and effort-missingness rules
       zero_observed
     ),
     "zero effort"
+  )
+
+  logical_detection <- inputs$detections
+  logical_detection$detected <- as.logical(logical_detection$detected)
+  logical_data <- prepare_flexirich_g_data(
+    inputs$candidate_pool,
+    inputs$effort_weekly,
+    logical_detection
+  )
+  testthat::expect_identical(
+    logical_data$observed$detected,
+    .prepare_infer_fixture(inputs)$observed$detected
+  )
+})
+
+testthat::test_that("cardinality guards fail without materialising grids", {
+  testthat::expect_identical(
+    .infer_checked_cardinality(
+      c(3L, 4L),
+      "test grid",
+      limit = 12L
+    ),
+    12L
+  )
+  testthat::expect_error(
+    .infer_checked_cardinality(
+      c(3L, 4L),
+      "test grid",
+      limit = 11L
+    ),
+    "exceeds"
+  )
+  testthat::expect_error(
+    .infer_checked_cardinality(
+      c(.Machine$integer.max, 2L),
+      "test grid"
+    ),
+    "exceeds"
   )
 })
 

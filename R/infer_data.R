@@ -68,9 +68,11 @@
   name,
   lower,
   upper,
-  allow_missing = FALSE
+  allow_missing = FALSE,
+  allow_logical = FALSE
 ) {
-  numeric_type <- (is.numeric(x) && !is.complex(x)) || is.logical(x)
+  numeric_type <- (is.numeric(x) && !is.complex(x)) ||
+    (allow_logical && is.logical(x))
   non_missing <- !is.na(x)
   invalid_missing <- !allow_missing && any(!non_missing)
   invalid_values <- numeric_type && (
@@ -105,6 +107,56 @@
   sort(x, method = "radix")
 }
 
+.infer_checked_cardinality <- function(
+  dimensions,
+  name,
+  limit = .Machine$integer.max
+) {
+  valid_dimensions <- is.numeric(dimensions) &&
+    !is.complex(dimensions) &&
+    !is.logical(dimensions) &&
+    length(dimensions) > 0L &&
+    !anyNA(dimensions) &&
+    all(is.finite(dimensions)) &&
+    all(dimensions == trunc(dimensions)) &&
+    all(dimensions >= 0)
+  valid_name <- is.character(name) &&
+    length(name) == 1L &&
+    !is.na(name) &&
+    nzchar(name)
+  valid_limit <- is.numeric(limit) &&
+    !is.complex(limit) &&
+    !is.logical(limit) &&
+    length(limit) == 1L &&
+    !is.na(limit) &&
+    is.finite(limit) &&
+    limit == trunc(limit) &&
+    limit >= 1 &&
+    limit <= .Machine$integer.max
+  if (!valid_dimensions || !valid_name || !valid_limit) {
+    .stop_invalid_inference_data(
+      "Cardinality guard arguments are invalid."
+    )
+  }
+
+  cardinality <- 1
+  for (dimension in as.double(dimensions)) {
+    if (dimension == 0) {
+      cardinality <- 0
+    } else if (cardinality > floor(limit / dimension)) {
+      .stop_invalid_inference_data(paste0(
+        name,
+        " cardinality exceeds the safe allocation limit of ",
+        format(limit, scientific = FALSE),
+        "."
+      ))
+    } else {
+      cardinality <- cardinality * dimension
+    }
+  }
+  as.integer(cardinality)
+}
+
 .infer_complete_grid <- function(
   table,
   columns,
@@ -120,6 +172,10 @@
     ))
   }
 
+  .infer_checked_cardinality(
+    vapply(levels, length, integer(1)),
+    paste0(name, " grid")
+  )
   expected <- do.call(
     tidyr::expand_grid,
     stats::setNames(levels, columns)
@@ -314,7 +370,8 @@ prepare_flexirich_g_data <- function(
     "detections$detected",
     0L,
     1L,
-    allow_missing = TRUE
+    allow_missing = TRUE,
+    allow_logical = TRUE
   )
 
   if (nrow(effort_weekly) == 0L) {
@@ -359,15 +416,6 @@ prepare_flexirich_g_data <- function(
     list(candidate_ids, camera_ids, occasion_ids),
     "detections"
   )
-
-  n_expected <- length(candidate_ids) *
-    length(camera_ids) *
-    length(occasion_ids)
-  if (!is.finite(n_expected) || n_expected > .Machine$integer.max) {
-    .stop_invalid_inference_data(
-      "The complete observation grid exceeds R's integer range."
-    )
-  }
 
   observation_keys <- tidyr::expand_grid(
     species_id = candidate_ids,
@@ -515,6 +563,14 @@ validate_flexirich_g_data <- function(data) {
     )
   }
 
+  .infer_checked_cardinality(
+    c(
+      length(data$candidate_ids),
+      length(data$camera_ids),
+      length(data$occasion_ids)
+    ),
+    "data$observed grid"
+  )
   expected_keys <- tidyr::expand_grid(
     species_id = data$candidate_ids,
     camera_id = data$camera_ids,
