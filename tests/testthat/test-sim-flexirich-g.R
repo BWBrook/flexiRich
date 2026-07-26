@@ -45,7 +45,10 @@ testthat::test_that("simulation returns the complete truth contract", {
   )
   testthat::expect_named(
     sim$metadata,
-    c("simulator_version", "seed", "generated_at")
+    c(
+      "simulator_version", "seed", "rng_kind", "rng_normal_kind",
+      "rng_sample_kind", "generated_at"
+    )
   )
 
   testthat::expect_equal(sum(sim$species$member), 7L)
@@ -53,6 +56,7 @@ testthat::test_that("simulation returns the complete truth contract", {
   testthat::expect_equal(nrow(sim$detections), 12L * 3L * 5L)
   testthat::expect_identical(sim$truth$true_richness, 7L)
   testthat::expect_identical(sim$metadata$seed, config$seed)
+  testthat::expect_identical(sim$metadata$simulator_version, "0.1.1")
 })
 
 testthat::test_that("random streams reconstruct latent membership and effects", {

@@ -27,6 +27,45 @@ validate_sim_config <- function(config) {
     stop("config must be a list.", call. = FALSE)
   }
 
+  canonical_fields <- names(formals(flexirich_sim_config))
+  config_fields <- names(config)
+  if (is.null(config_fields) ||
+      anyNA(config_fields) ||
+      any(!nzchar(config_fields))) {
+    stop("config fields must all be named.", call. = FALSE)
+  }
+  duplicate_fields <- unique(config_fields[duplicated(config_fields)])
+  if (length(duplicate_fields) > 0L) {
+    stop(
+      "config has duplicate fields: ",
+      paste(duplicate_fields, collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+  missing_fields <- setdiff(canonical_fields, config_fields)
+  if (length(missing_fields) > 0L) {
+    stop(
+      "config is missing fields: ",
+      paste(missing_fields, collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+  extra_fields <- setdiff(config_fields, canonical_fields)
+  if (length(extra_fields) > 0L) {
+    stop(
+      "config has unexpected fields: ",
+      paste(extra_fields, collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+  config <- stats::setNames(
+    lapply(canonical_fields, function(field) config[[field]]),
+    canonical_fields
+  )
+
   config$candidate_pool_size <- .assert_scalar_integer(
     config$candidate_pool_size, "candidate_pool_size", 1L
   )

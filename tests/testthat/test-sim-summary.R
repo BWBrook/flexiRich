@@ -150,7 +150,7 @@ testthat::test_that("validation requires the canonical simulator version", {
 
   testthat::expect_error(
     validate_flexirich_sim(sim),
-    "simulator_version must equal 0.1.0",
+    "simulator_version must equal 0.1.1",
     fixed = TRUE
   )
 })

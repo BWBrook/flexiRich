@@ -145,7 +145,7 @@ testthat::test_that("supplied daily effort is validated and ordered", {
       dplyr::select(supplied, -operating),
       config
     ),
-    "missing: operating",
+    "missing fields: operating",
     fixed = TRUE
   )
   testthat::expect_error(

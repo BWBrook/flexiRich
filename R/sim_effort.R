@@ -1,10 +1,51 @@
 validate_daily_effort <- function(effort_daily, config) {
   required <- c("camera_id", "date", "operating")
-  missing <- setdiff(required, names(effort_daily))
-  if (length(missing) > 0L) {
+  if (!is.data.frame(effort_daily)) {
+    stop("effort_daily must be a data frame.", call. = FALSE)
+  }
+  effort_fields <- names(effort_daily)
+  if (is.null(effort_fields) ||
+      anyNA(effort_fields) ||
+      any(!nzchar(effort_fields))) {
+    stop("effort_daily fields must all be named.", call. = FALSE)
+  }
+  duplicate_fields <- unique(effort_fields[duplicated(effort_fields)])
+  if (length(duplicate_fields) > 0L) {
     stop(
-      "effort_daily is missing: ",
-      paste(missing, collapse = ", "),
+      "effort_daily has duplicate fields: ",
+      paste(duplicate_fields, collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+  missing_fields <- setdiff(required, effort_fields)
+  if (length(missing_fields) > 0L) {
+    stop(
+      "effort_daily is missing fields: ",
+      paste(missing_fields, collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+  extra_fields <- setdiff(effort_fields, required)
+  if (length(extra_fields) > 0L) {
+    stop(
+      "effort_daily has unexpected fields: ",
+      paste(extra_fields, collapse = ", "),
+      ".",
+      call. = FALSE
+    )
+  }
+
+  effort_daily <- tibble::as_tibble(
+    effort_daily[, required, drop = FALSE]
+  )
+  camera_id <- effort_daily$camera_id
+  if (is.factor(camera_id)) {
+    effort_daily$camera_id <- as.character(camera_id)
+  } else if (!is.character(camera_id)) {
+    stop(
+      "effort_daily$camera_id must be character or factor.",
       call. = FALSE
     )
   }
@@ -48,7 +89,7 @@ validate_daily_effort <- function(effort_daily, config) {
     )
   }
 
-  tibble::as_tibble(effort_daily) |>
+  effort_daily |>
     dplyr::mutate(operating = as.integer(operating)) |>
     dplyr::arrange(match(camera_id, expected_cameras), date)
 }
@@ -59,7 +100,7 @@ simulate_daily_effort <- function(config) {
   cameras <- sprintf("cam_%02d", seq_len(config$n_cameras))
   dates <- seq(config$start_date, by = "day", length.out = n_days)
 
-  states <- withr::with_seed(config$seed + 301L, {
+  states <- .with_sim_rng(config$seed + 301L, {
     result <- matrix(0L, nrow = config$n_cameras, ncol = n_days)
     result[, 1L] <- stats::rbinom(
       config$n_cameras,

@@ -722,8 +722,11 @@ simulate_flexirich_g <- function(config = flexirich_sim_config(), effort_daily =
     detections = detections,
     truth = truth,
     metadata = list(
-      simulator_version = "0.1.0",
+      simulator_version = "0.1.1",
       seed = config$seed,
+      rng_kind = "Mersenne-Twister",
+      rng_normal_kind = "Inversion",
+      rng_sample_kind = "Rejection",
       generated_at = format(Sys.time(), tz = "UTC", usetz = TRUE)
     )
   )
@@ -1315,7 +1318,7 @@ git commit -m "docs: close Goal 001 simulator"
 git status --short --branch
 ```
 
-Expected: clean `main` worktree after the commit.
+Expected: clean current worktree after the commit.
 
 ---
 

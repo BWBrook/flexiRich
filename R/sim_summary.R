@@ -111,14 +111,36 @@ validate_flexirich_sim <- function(sim) {
   if (!is.list(sim$metadata) ||
       !identical(
         names(sim$metadata),
-        c("simulator_version", "seed", "generated_at")
+        c(
+          "simulator_version", "seed", "rng_kind", "rng_normal_kind",
+          "rng_sample_kind", "generated_at"
+        )
       )) {
     .stop_invalid_sim("metadata component contract is invalid.")
   }
-  if (!identical(sim$metadata$simulator_version, "0.1.0")) {
+  if (!identical(sim$metadata$simulator_version, "0.1.1")) {
     .stop_invalid_sim(
-      "metadata simulator_version must equal 0.1.0."
+      "metadata simulator_version must equal 0.1.1."
     )
+  }
+  canonical_rng_metadata <- c(
+    rng_kind = unname(.sim_rng_algorithms[["kind"]]),
+    rng_normal_kind = unname(.sim_rng_algorithms[["normal.kind"]]),
+    rng_sample_kind = unname(.sim_rng_algorithms[["sample.kind"]])
+  )
+  for (field in names(canonical_rng_metadata)) {
+    if (!identical(
+      sim$metadata[[field]],
+      unname(canonical_rng_metadata[[field]])
+    )) {
+      .stop_invalid_sim(paste0(
+        "metadata ",
+        field,
+        " must equal ",
+        canonical_rng_metadata[[field]],
+        "."
+      ))
+    }
   }
 
   identifier_fields <- list(

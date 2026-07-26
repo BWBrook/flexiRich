@@ -10,7 +10,7 @@ simulate_flexirich_g <- function(
       seq_len(config$candidate_pool_size)
     )
   )
-  member_index <- withr::with_seed(config$seed + 101L, {
+  member_index <- .with_sim_rng(config$seed + 101L, {
     if (config$true_richness == 0L) {
       integer()
     } else {
@@ -22,7 +22,7 @@ simulate_flexirich_g <- function(
     }
   })
   species$member <- seq_len(config$candidate_pool_size) %in% member_index
-  species$alpha <- withr::with_seed(
+  species$alpha <- .with_sim_rng(
     config$seed + 102L,
     stats::rnorm(
       config$candidate_pool_size,
@@ -33,7 +33,7 @@ simulate_flexirich_g <- function(
 
   cameras <- tibble::tibble(
     camera_id = sprintf("cam_%02d", seq_len(config$n_cameras)),
-    camera_effect = withr::with_seed(
+    camera_effect = .with_sim_rng(
       config$seed + 201L,
       stats::rnorm(
         config$n_cameras,
@@ -86,7 +86,7 @@ simulate_flexirich_g <- function(
       detect_prob = as.numeric(member) * detect_prob_if_member
     )
 
-  detections$detected <- withr::with_seed(config$seed + 401L, {
+  detections$detected <- .with_sim_rng(config$seed + 401L, {
     value <- rep(NA_integer_, nrow(detections))
     sampled_rows <- which(detections$sampled)
     value[sampled_rows] <- stats::rbinom(
@@ -126,8 +126,11 @@ simulate_flexirich_g <- function(
     detections = detections,
     truth = truth,
     metadata = list(
-      simulator_version = "0.1.0",
+      simulator_version = "0.1.1",
       seed = config$seed,
+      rng_kind = unname(.sim_rng_algorithms[["kind"]]),
+      rng_normal_kind = unname(.sim_rng_algorithms[["normal.kind"]]),
+      rng_sample_kind = unname(.sim_rng_algorithms[["sample.kind"]]),
       generated_at = format(Sys.time(), tz = "UTC", usetz = TRUE)
     )
   )
