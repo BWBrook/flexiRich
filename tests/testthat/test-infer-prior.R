@@ -26,6 +26,49 @@
   assessment$rules$rule_id[!assessment$rules$passed]
 }
 
+.goal002_expected_test_inventory <- function() {
+  profile_stub <- c(
+    "primary",
+    "sensitivity-membership",
+    "sensitivity-tail"
+  )
+  profile_suffix <- c(
+    "assessment.csv",
+    "boundary-frequencies.csv",
+    "profile.csv",
+    "quantiles.csv",
+    "report.rds",
+    "richness-pmf.csv",
+    "saturation-frequencies.csv"
+  )
+  sort(c(
+    "automatic-assessment.csv",
+    "effort-provenance.csv",
+    "effort-weekly.csv",
+    "effort.rds",
+    "prior-check-index.rds",
+    "run-manifest.csv",
+    as.vector(outer(profile_stub, profile_suffix, paste, sep = "-"))
+  ))
+}
+
+.snapshot_goal002_output <- function(path) {
+  relative <- sort(list.files(
+    path,
+    recursive = TRUE,
+    all.files = TRUE,
+    no.. = TRUE
+  ))
+  stats::setNames(lapply(relative, function(file) {
+    full_path <- file.path(path, file)
+    readBin(
+      full_path,
+      what = "raw",
+      n = as.integer(file.info(full_path)$size)
+    )
+  }), relative)
+}
+
 testthat::test_that("prior effort is the frozen Goal 001 208-occasion history", {
   effort <- goal002_prior_effort(seed = 2601L)
 
@@ -367,5 +410,225 @@ testthat::test_that("reports reject a tampered automatic assessment", {
   testthat::expect_error(
     goal002_prior_report(draws, assessment),
     "does not exactly match"
+  )
+})
+
+testthat::test_that("finite latent identity corruption is rejected", {
+  draws <- simulate_goal002_prior(
+    goal002_prior_profiles()$primary,
+    effort = goal002_prior_effort(2601L),
+    n_draws = 20L,
+    seed = 2602L
+  )
+  corruptions <- list(
+    eta = function(x) {
+      x$eta[1L, 1L, 1L] <- x$eta[1L, 1L, 1L] + 0.25
+      x
+    },
+    rate = function(x) {
+      x$rate[1L, 1L, 1L] <- x$rate[1L, 1L, 1L] * 2
+      x
+    },
+    p1 = function(x) {
+      x$p1[1L, 1L, 1L] <- x$p1[1L, 1L, 1L] / 2
+      x
+    },
+    p7 = function(x) {
+      x$p7[1L, 1L, 1L] <- x$p7[1L, 1L, 1L] / 2
+      x
+    },
+    camera_effect = function(x) {
+      x$camera_effect[1L, 1L] <- x$camera_effect[1L, 1L] + 0.1
+      x
+    },
+    detect_probability_26 = function(x) {
+      x$detect_probability_26[1L, 1L] <-
+        x$detect_probability_26[1L, 1L] / 2
+      x
+    }
+  )
+
+  for (field in names(corruptions)) {
+    testthat::expect_error(
+      validate_goal002_prior_draws(corruptions[[field]](draws)),
+      field,
+      info = field
+    )
+  }
+})
+
+testthat::test_that("non-finite latent corruption reaches the finite rule", {
+  draws <- .make_goal002_rule_fixture(50L)
+  draws$eta[1L, 1L, 1L] <- Inf
+
+  testthat::expect_identical(
+    .failed_goal002_rules(draws),
+    "finite_draws"
+  )
+})
+
+testthat::test_that("a different valid normalised PMF cannot be certified", {
+  draws <- .make_goal002_rule_fixture(50L)
+  draws$richness_pmf$probability[] <-
+    rep(1 / 31, length.out = 31L)
+
+  testthat::expect_error(
+    validate_goal002_prior_draws(draws),
+    "analytical beta-binomial PMF"
+  )
+})
+
+testthat::test_that("effort hash and seed provenance are linked", {
+  draws <- .make_goal002_rule_fixture(50L)
+  bad_hash <- draws
+  bad_hash$effort_hash <- paste(rep("a", 64L), collapse = "")
+  if (identical(bad_hash$effort_hash, draws$effort_hash)) {
+    bad_hash$effort_hash <- paste(rep("b", 64L), collapse = "")
+  }
+  testthat::expect_error(
+    validate_goal002_prior_draws(bad_hash),
+    "effort provenance"
+  )
+
+  bad_seed <- draws
+  bad_seed$effort_seed <- bad_seed$effort_seed + 1L
+  testthat::expect_error(
+    validate_goal002_prior_draws(bad_seed),
+    "effort provenance"
+  )
+})
+
+testthat::test_that("transactional runner fully replaces complete evidence", {
+  parent <- withr::local_tempdir()
+  output_dir <- file.path(parent, "prior-predictive")
+  seeds_1 <- c(
+    primary = 111L,
+    sensitivity_membership = 112L,
+    sensitivity_tail = 113L
+  )
+  seeds_2 <- c(
+    primary = 211L,
+    sensitivity_membership = 212L,
+    sensitivity_tail = 213L
+  )
+
+  first <- run_goal002_prior_checks(
+    output_dir = output_dir,
+    effort_seed = 101L,
+    prior_seed = seeds_1,
+    n_draws = 12L
+  )
+  first_target <- Sys.readlink(output_dir)
+  testthat::expect_true(nzchar(first_target))
+  testthat::expect_identical(
+    sort(list.files(
+      output_dir,
+      recursive = TRUE,
+      all.files = TRUE,
+      no.. = TRUE
+    )),
+    .goal002_expected_test_inventory()
+  )
+  testthat::expect_true(validate_goal002_prior_output(output_dir))
+  testthat::expect_identical(first$manifest$n_draws, rep(12L, 3L))
+
+  second <- run_goal002_prior_checks(
+    output_dir = output_dir,
+    effort_seed = 201L,
+    prior_seed = seeds_2,
+    n_draws = 13L
+  )
+  second_target <- Sys.readlink(output_dir)
+  testthat::expect_true(nzchar(second_target))
+  testthat::expect_false(identical(second_target, first_target))
+  testthat::expect_false(file.exists(file.path(parent, first_target)))
+  testthat::expect_true(validate_goal002_prior_output(output_dir))
+  testthat::expect_identical(second$manifest$n_draws, rep(13L, 3L))
+  testthat::expect_identical(
+    second$manifest$simulation_seed,
+    unname(as.integer(seeds_2))
+  )
+})
+
+testthat::test_that("mid-run failure leaves final evidence byte-identical", {
+  parent <- withr::local_tempdir()
+  output_dir <- file.path(parent, "prior-predictive")
+  initial_seeds <- c(
+    primary = 311L,
+    sensitivity_membership = 312L,
+    sensitivity_tail = 313L
+  )
+  failing_seeds <- c(
+    primary = 411L,
+    sensitivity_membership = 412L,
+    sensitivity_tail = 413L
+  )
+  run_goal002_prior_checks(
+    output_dir = output_dir,
+    effort_seed = 301L,
+    prior_seed = initial_seeds,
+    n_draws = 10L
+  )
+  target_before <- Sys.readlink(output_dir)
+  bytes_before <- .snapshot_goal002_output(output_dir)
+  completed <- 0L
+  fail_during_second_profile <- function(profile_key, ...) {
+    completed <<- completed + 1L
+    if (completed == 2L) {
+      stop("injected mid-run failure", call. = FALSE)
+    }
+    invisible(profile_key)
+  }
+
+  testthat::expect_error(
+    run_goal002_prior_checks(
+      output_dir = output_dir,
+      effort_seed = 401L,
+      prior_seed = failing_seeds,
+      n_draws = 11L,
+      profile_completed = fail_during_second_profile
+    ),
+    "injected mid-run failure"
+  )
+
+  testthat::expect_identical(Sys.readlink(output_dir), target_before)
+  testthat::expect_identical(
+    .snapshot_goal002_output(output_dir),
+    bytes_before
+  )
+  testthat::expect_length(
+    list.files(
+      parent,
+      pattern = "^\\.prior-predictive-staging-",
+      all.files = TRUE
+    ),
+    0L
+  )
+})
+
+testthat::test_that("automatic rejection publishes complete evidence", {
+  parent <- withr::local_tempdir()
+  output_dir <- file.path(parent, "prior-predictive")
+  result <- run_goal002_prior_checks(
+    output_dir = output_dir,
+    effort_seed = 501L,
+    prior_seed = c(
+      primary = 511L,
+      sensitivity_membership = 512L,
+      sensitivity_tail = 513L
+    ),
+    n_draws = 1L
+  )
+
+  testthat::expect_true(result$automatic_rejected)
+  testthat::expect_true(validate_goal002_prior_output(output_dir))
+  testthat::expect_identical(
+    sort(list.files(
+      output_dir,
+      recursive = TRUE,
+      all.files = TRUE,
+      no.. = TRUE
+    )),
+    .goal002_expected_test_inventory()
   )
 })

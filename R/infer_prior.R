@@ -458,6 +458,140 @@ simulate_goal002_prior <- function(profile, effort, n_draws, seed) {
   invisible(TRUE)
 }
 
+.goal002_validate_draw_provenance <- function(draws) {
+  expected_effort <- goal002_prior_effort(draws$effort_seed)
+  if (!identical(draws$effort_hash, expected_effort$effort_hash)) {
+    .stop_invalid_goal002_prior(
+      "draws effort provenance does not link effort_seed to effort_hash."
+    )
+  }
+
+  expected_pmf <- lower_bound_prior_pmf(
+    candidate_pool_size = draws$candidate_pool_size,
+    observed_richness = 0L,
+    omega_alpha = draws$profile$omega_alpha,
+    omega_beta = draws$profile$omega_beta
+  )
+  pmf <- draws$richness_pmf
+  pmf_is_rule_valid <- identical(
+    pmf$richness,
+    seq.int(0L, draws$candidate_pool_size)
+  ) &&
+    all(is.finite(pmf$probability)) &&
+    all(pmf$probability >= 0) &&
+    abs(sum(pmf$probability) - 1) <=
+      goal002_prior_rules()$pmf_tolerance
+  if (pmf_is_rule_valid && !identical(pmf, expected_pmf)) {
+    .stop_invalid_goal002_prior(
+      "draws analytical beta-binomial PMF does not match the profile."
+    )
+  }
+
+  expected_effort
+}
+
+.goal002_validate_finite_draw_identities <- function(draws, effort) {
+  identity_fields <- c(
+    "alpha",
+    "camera_effect",
+    "eta",
+    "rate",
+    "p1",
+    "p7",
+    "detect_probability_26",
+    "detect_probability_208"
+  )
+  if (any(vapply(
+    identity_fields,
+    function(field) any(!is.finite(draws[[field]])),
+    logical(1)
+  ))) {
+    return(invisible(TRUE))
+  }
+
+  rules <- goal002_prior_rules()
+  weekly_effort <- matrix(
+    effort$effort_weekly$active_days,
+    nrow = rules$n_cameras,
+    ncol = rules$n_occasions,
+    byrow = TRUE
+  )
+  effort_26 <- rowSums(
+    weekly_effort[, seq_len(rules$prefix_occasions), drop = FALSE]
+  )
+  effort_208 <- rowSums(weekly_effort)
+
+  for (draw in seq_len(draws$n_draws)) {
+    camera_effect <- draws$camera_effect[draw, ]
+    if (abs(sum(camera_effect)) > 1e-12) {
+      .stop_invalid_goal002_prior(
+        "draws$camera_effect does not satisfy the sum-zero contract."
+      )
+    }
+    expected_eta <- outer(
+      draws$alpha[draw, ],
+      camera_effect,
+      "+"
+    )
+    if (!identical(draws$eta[draw, , ], expected_eta)) {
+      .stop_invalid_goal002_prior(
+        "draws$eta does not equal alpha plus camera_effect."
+      )
+    }
+    expected_rate <- exp(expected_eta)
+    if (!identical(draws$rate[draw, , ], expected_rate)) {
+      .stop_invalid_goal002_prior(
+        "draws$rate does not equal exp(eta)."
+      )
+    }
+    if (!identical(
+      draws$p1[draw, , ],
+      -expm1(-expected_rate)
+    )) {
+      .stop_invalid_goal002_prior(
+        "draws$p1 does not match the one-day encounter probability."
+      )
+    }
+    if (!identical(
+      draws$p7[draw, , ],
+      -expm1(-7 * expected_rate)
+    )) {
+      .stop_invalid_goal002_prior(
+        "draws$p7 does not match the seven-day encounter probability."
+      )
+    }
+    expected_26 <- -expm1(
+      -as.numeric(expected_rate %*% effort_26)
+    )
+    if (!identical(
+      draws$detect_probability_26[draw, ],
+      expected_26
+    )) {
+      .stop_invalid_goal002_prior(
+        paste0(
+          "draws$detect_probability_26 does not match cumulative ",
+          "prefix effort."
+        )
+      )
+    }
+    expected_208 <- -expm1(
+      -as.numeric(expected_rate %*% effort_208)
+    )
+    if (!identical(
+      draws$detect_probability_208[draw, ],
+      expected_208
+    )) {
+      .stop_invalid_goal002_prior(
+        paste0(
+          "draws$detect_probability_208 does not match cumulative ",
+          "full effort."
+        )
+      )
+    }
+  }
+  invisible(TRUE)
+}
+
 validate_goal002_prior_draws <- function(draws) {
   if (!is.list(draws) ||
       !identical(class(draws), c("goal002_prior_draws", "list")) ||
@@ -585,6 +719,8 @@ validate_goal002_prior_draws <- function(draws) {
       "draws$richness_pmf has an invalid table contract."
     )
   }
+  expected_effort <- .goal002_validate_draw_provenance(draws)
+  .goal002_validate_finite_draw_identities(draws, expected_effort)
   TRUE
 }
 
@@ -957,5 +1093,730 @@ goal002_prior_report <- function(draws, assessment) {
     quantiles = quantiles,
     boundary_frequencies = boundaries,
     saturation_frequencies = saturation
+  )
+}
+
+.goal002_prior_profile_stubs <- function() {
+  c(
+    primary = "primary",
+    sensitivity_membership = "sensitivity-membership",
+    sensitivity_tail = "sensitivity-tail"
+  )
+}
+
+.goal002_prior_expected_inventory <- function(include_index = TRUE) {
+  profile_suffix <- c(
+    "assessment.csv",
+    "boundary-frequencies.csv",
+    "profile.csv",
+    "quantiles.csv",
+    "report.rds",
+    "richness-pmf.csv",
+    "saturation-frequencies.csv"
+  )
+  inventory <- c(
+    "automatic-assessment.csv",
+    "effort-provenance.csv",
+    "effort-weekly.csv",
+    "effort.rds",
+    "run-manifest.csv",
+    as.vector(outer(
+      unname(.goal002_prior_profile_stubs()),
+      profile_suffix,
+      paste,
+      sep = "-"
+    ))
+  )
+  if (include_index) {
+    inventory <- c(inventory, "prior-check-index.rds")
+  }
+  sort(inventory)
+}
+
+.goal002_prior_file_inventory <- function(directory) {
+  relative <- .goal002_prior_expected_inventory(include_index = FALSE)
+  full_path <- file.path(directory, relative)
+  if (any(!file.exists(full_path)) || any(dir.exists(full_path))) {
+    .stop_invalid_goal002_prior(
+      "Prior evidence is missing a required compact output file."
+    )
+  }
+  tibble::tibble(
+    path = relative,
+    sha256 = unname(vapply(full_path, function(path) {
+      digest::digest(
+        file = path,
+        algo = "sha256",
+        serialize = FALSE
+      )
+    }, character(1))),
+    bytes = unname(as.double(file.info(full_path)$size))
+  )
+}
+
+.goal002_prior_write_csv <- function(value, path) {
+  withr::with_options(
+    list(digits = 17L),
+    utils::write.csv(value, path, row.names = FALSE)
+  )
+  invisible(path)
+}
+
+.goal002_prior_readlink <- function(path) {
+  link <- Sys.readlink(path)
+  if (length(link) != 1L || is.na(link) || !nzchar(link)) {
+    return("")
+  }
+  link
+}
+
+.goal002_validate_prior_runner_inputs <- function(
+  output_dir,
+  effort_seed,
+  prior_seed,
+  n_draws,
+  profile_completed
+) {
+  valid_output <- is.character(output_dir) &&
+    length(output_dir) == 1L &&
+    !is.na(output_dir) &&
+    nzchar(output_dir)
+  if (!valid_output) {
+    .stop_invalid_goal002_prior(
+      "output_dir must be one non-empty character path."
+    )
+  }
+  effort_seed <- .goal002_prior_scalar_integer(
+    effort_seed,
+    "effort_seed"
+  )
+  n_draws <- .goal002_assert_integer(
+    n_draws,
+    "n_draws",
+    lower = 1L,
+    upper = goal002_prior_rules()$n_draws
+  )
+  expected_keys <- names(goal002_prior_profiles())
+  valid_seeds <- is.numeric(prior_seed) &&
+    !is.complex(prior_seed) &&
+    !is.logical(prior_seed) &&
+    identical(names(prior_seed), expected_keys) &&
+    length(prior_seed) == length(expected_keys) &&
+    !anyNA(prior_seed) &&
+    all(is.finite(prior_seed)) &&
+    all(prior_seed == trunc(prior_seed)) &&
+    all(prior_seed >= 0) &&
+    all(prior_seed <= .Machine$integer.max)
+  if (!valid_seeds) {
+    .stop_invalid_goal002_prior(
+      "prior_seed must be a named integer-valued seed for each profile."
+    )
+  }
+  prior_seed <- stats::setNames(
+    as.integer(prior_seed),
+    expected_keys
+  )
+  if (!is.null(profile_completed) && !is.function(profile_completed)) {
+    .stop_invalid_goal002_prior(
+      "profile_completed must be NULL or a function."
+    )
+  }
+
+  parent <- dirname(output_dir)
+  dir.create(parent, recursive = TRUE, showWarnings = FALSE)
+  if (!dir.exists(parent)) {
+    .stop_invalid_goal002_prior(
+      "Could not create the prior evidence parent directory."
+    )
+  }
+  parent <- normalizePath(parent, mustWork = TRUE)
+  output_dir <- file.path(parent, basename(output_dir))
+
+  list(
+    output_dir = output_dir,
+    effort_seed = effort_seed,
+    prior_seed = prior_seed,
+    n_draws = n_draws,
+    profile_completed = profile_completed
+  )
+}
+
+.goal002_write_prior_evidence <- function(
+  directory,
+  effort_seed,
+  prior_seed,
+  n_draws,
+  profile_completed,
+  verbose
+) {
+  rules <- goal002_prior_rules()
+  profiles <- goal002_prior_profiles()
+  stubs <- .goal002_prior_profile_stubs()
+  effort <- goal002_prior_effort(seed = effort_seed)
+
+  saveRDS(
+    effort,
+    file.path(directory, "effort.rds"),
+    version = 3L
+  )
+  .goal002_prior_write_csv(
+    effort$effort_weekly,
+    file.path(directory, "effort-weekly.csv")
+  )
+  .goal002_prior_write_csv(
+    data.frame(
+      schema_version = effort$schema_version,
+      effort_seed = effort$seed,
+      effort_hash = effort$effort_hash,
+      candidate_pool_size = effort$candidate_pool_size,
+      n_cameras = effort$n_cameras,
+      n_occasions = effort$n_occasions,
+      prefix_occasions = effort$prefix_occasions,
+      occasion_days = effort$occasion_days,
+      stringsAsFactors = FALSE
+    ),
+    file.path(directory, "effort-provenance.csv")
+  )
+
+  all_assessments <- vector("list", length(profiles))
+  all_manifests <- vector("list", length(profiles))
+  names(all_assessments) <- names(profiles)
+  names(all_manifests) <- names(profiles)
+
+  for (profile_key in names(profiles)) {
+    if (verbose) {
+      message("Prior-predictive profile: ", profile_key)
+    }
+    draws <- simulate_goal002_prior(
+      profile = profiles[[profile_key]],
+      effort = effort,
+      n_draws = n_draws,
+      seed = unname(prior_seed[[profile_key]])
+    )
+    assessment <- assess_goal002_prior(draws)
+    report <- goal002_prior_report(draws, assessment)
+    stub <- unname(stubs[[profile_key]])
+
+    saveRDS(
+      report,
+      file.path(directory, paste0(stub, "-report.rds")),
+      version = 3L
+    )
+    .goal002_prior_write_csv(
+      report$assessment,
+      file.path(directory, paste0(stub, "-assessment.csv"))
+    )
+    .goal002_prior_write_csv(
+      as.data.frame(report$profile, stringsAsFactors = FALSE),
+      file.path(directory, paste0(stub, "-profile.csv"))
+    )
+    .goal002_prior_write_csv(
+      report$richness_pmf,
+      file.path(directory, paste0(stub, "-richness-pmf.csv"))
+    )
+    .goal002_prior_write_csv(
+      report$quantiles,
+      file.path(directory, paste0(stub, "-quantiles.csv"))
+    )
+    .goal002_prior_write_csv(
+      report$boundary_frequencies,
+      file.path(directory, paste0(
+        stub,
+        "-boundary-frequencies.csv"
+      ))
+    )
+    .goal002_prior_write_csv(
+      report$saturation_frequencies,
+      file.path(directory, paste0(
+        stub,
+        "-saturation-frequencies.csv"
+      ))
+    )
+
+    all_assessments[[profile_key]] <- dplyr::mutate(
+      report$assessment,
+      profile_key = profile_key,
+      profile_id = report$profile_id,
+      .before = 1L
+    )
+    failed_rules <- report$assessment$rule_id[
+      !report$assessment$passed
+    ]
+    all_manifests[[profile_key]] <- tibble::tibble(
+      schema_version = report$schema_version,
+      profile_key = profile_key,
+      profile_id = report$profile_id,
+      profile_hash = report$profile_hash,
+      effort_seed = report$effort_seed,
+      effort_hash = report$effort_hash,
+      simulation_seed = report$simulation_seed,
+      n_draws = report$n_draws,
+      automatic_outcome = report$automatic_outcome,
+      failed_rules = paste(failed_rules, collapse = ";")
+    )
+
+    rm(draws, assessment, report)
+    invisible(gc(verbose = FALSE))
+    if (!is.null(profile_completed)) {
+      profile_completed(profile_key = profile_key)
+    }
+  }
+
+  assessment_table <- dplyr::bind_rows(all_assessments)
+  manifest <- dplyr::bind_rows(all_manifests)
+  .goal002_prior_write_csv(
+    assessment_table,
+    file.path(directory, "automatic-assessment.csv")
+  )
+  .goal002_prior_write_csv(
+    manifest,
+    file.path(directory, "run-manifest.csv")
+  )
+  file_inventory <- .goal002_prior_file_inventory(directory)
+  index <- list(
+    schema_version = .goal002_prior_schema_version,
+    rules = rules,
+    effort_hash = effort$effort_hash,
+    effort_seed = effort_seed,
+    prior_seed = prior_seed,
+    n_draws = n_draws,
+    profile_keys = names(profiles),
+    manifest = manifest,
+    assessment = assessment_table,
+    file_inventory = file_inventory
+  )
+  saveRDS(
+    index,
+    file.path(directory, "prior-check-index.rds"),
+    version = 3L
+  )
+
+  list(index = index, effort = effort)
+}
+
+.goal002_prior_read_manifest <- function(path) {
+  utils::read.csv(
+    path,
+    stringsAsFactors = FALSE,
+    check.names = FALSE,
+    na.strings = "__GOAL002_NO_NA__",
+    colClasses = c(
+      "character",
+      "character",
+      "character",
+      "character",
+      "integer",
+      "character",
+      "integer",
+      "integer",
+      "character",
+      "character"
+    )
+  )
+}
+
+.goal002_prior_read_assessment <- function(path) {
+  utils::read.csv(
+    path,
+    stringsAsFactors = FALSE,
+    check.names = FALSE,
+    na.strings = "__GOAL002_NO_NA__",
+    colClasses = c(
+      "character",
+      "character",
+      "character",
+      "numeric",
+      "numeric",
+      "character",
+      "logical",
+      "character"
+    )
+  )
+}
+
+validate_goal002_prior_output <- function(output_dir) {
+  valid_path <- is.character(output_dir) &&
+    length(output_dir) == 1L &&
+    !is.na(output_dir) &&
+    dir.exists(output_dir)
+  if (!valid_path) {
+    .stop_invalid_goal002_prior(
+      "output_dir must identify a complete prior evidence directory."
+    )
+  }
+  actual_inventory <- sort(list.files(
+    output_dir,
+    recursive = TRUE,
+    all.files = TRUE,
+    no.. = TRUE
+  ))
+  expected_inventory <- .goal002_prior_expected_inventory()
+  if (!identical(actual_inventory, expected_inventory)) {
+    .stop_invalid_goal002_prior(
+      "Prior evidence does not have the exact expected file inventory."
+    )
+  }
+
+  index <- readRDS(file.path(output_dir, "prior-check-index.rds"))
+  expected_index_fields <- c(
+    "schema_version",
+    "rules",
+    "effort_hash",
+    "effort_seed",
+    "prior_seed",
+    "n_draws",
+    "profile_keys",
+    "manifest",
+    "assessment",
+    "file_inventory"
+  )
+  if (!is.list(index) ||
+      !identical(names(index), expected_index_fields) ||
+      !identical(index$schema_version, .goal002_prior_schema_version) ||
+      !identical(index$rules, goal002_prior_rules()) ||
+      !.goal002_valid_hash(index$effort_hash)) {
+    .stop_invalid_goal002_prior(
+      "Prior evidence aggregate index has an invalid contract."
+    )
+  }
+  runner <- .goal002_validate_prior_runner_inputs(
+    output_dir = output_dir,
+    effort_seed = index$effort_seed,
+    prior_seed = index$prior_seed,
+    n_draws = index$n_draws,
+    profile_completed = NULL
+  )
+  profiles <- goal002_prior_profiles()
+  if (!identical(index$profile_keys, names(profiles))) {
+    .stop_invalid_goal002_prior(
+      "Prior evidence aggregate index has invalid profile keys."
+    )
+  }
+  expected_effort <- goal002_prior_effort(runner$effort_seed)
+  if (!identical(index$effort_hash, expected_effort$effort_hash)) {
+    .stop_invalid_goal002_prior(
+      "Prior evidence aggregate index has invalid effort provenance."
+    )
+  }
+
+  expected_manifest_fields <- c(
+    "schema_version",
+    "profile_key",
+    "profile_id",
+    "profile_hash",
+    "effort_seed",
+    "effort_hash",
+    "simulation_seed",
+    "n_draws",
+    "automatic_outcome",
+    "failed_rules"
+  )
+  expected_assessment_fields <- c(
+    "profile_key",
+    "profile_id",
+    "rule_id",
+    "statistic",
+    "threshold",
+    "comparison",
+    "passed",
+    "automatic_outcome"
+  )
+  if (!tibble::is_tibble(index$manifest) ||
+      !identical(names(index$manifest), expected_manifest_fields) ||
+      nrow(index$manifest) != length(profiles) ||
+      !tibble::is_tibble(index$assessment) ||
+      !identical(names(index$assessment), expected_assessment_fields) ||
+      nrow(index$assessment) != 7L * length(profiles)) {
+    .stop_invalid_goal002_prior(
+      "Prior evidence aggregate tables have an invalid contract."
+    )
+  }
+  manifest_csv <- .goal002_prior_read_manifest(
+    file.path(output_dir, "run-manifest.csv")
+  )
+  assessment_csv <- .goal002_prior_read_assessment(
+    file.path(output_dir, "automatic-assessment.csv")
+  )
+  manifest_matches <- isTRUE(all.equal(
+    as.data.frame(index$manifest),
+    manifest_csv,
+    tolerance = 1e-15,
+    check.attributes = TRUE
+  ))
+  assessment_matches <- isTRUE(all.equal(
+    as.data.frame(index$assessment),
+    assessment_csv,
+    tolerance = 1e-15,
+    check.attributes = TRUE
+  ))
+  if (!manifest_matches || !assessment_matches) {
+    .stop_invalid_goal002_prior(
+      "Prior evidence aggregate CSVs do not match the index."
+    )
+  }
+
+  expected_file_inventory <- .goal002_prior_file_inventory(output_dir)
+  if (!identical(index$file_inventory, expected_file_inventory)) {
+    .stop_invalid_goal002_prior(
+      "Prior evidence file hashes do not match the aggregate index."
+    )
+  }
+
+  stubs <- .goal002_prior_profile_stubs()
+  for (profile_key in names(profiles)) {
+    row <- index$manifest[
+      index$manifest$profile_key == profile_key,
+      ,
+      drop = FALSE
+    ]
+    expected_profile <- profiles[[profile_key]]
+    expected_hash <- .goal002_profile_hash(expected_profile)
+    expected_seed <- unname(runner$prior_seed[[profile_key]])
+    valid_row <- nrow(row) == 1L &&
+      identical(row$schema_version[[1L]], .goal002_prior_schema_version) &&
+      identical(row$profile_id[[1L]], expected_profile$profile_id) &&
+      identical(row$profile_hash[[1L]], expected_hash) &&
+      identical(row$effort_seed[[1L]], runner$effort_seed) &&
+      identical(row$effort_hash[[1L]], expected_effort$effort_hash) &&
+      identical(row$simulation_seed[[1L]], expected_seed) &&
+      identical(row$n_draws[[1L]], runner$n_draws) &&
+      row$automatic_outcome[[1L]] %in% c(
+        "not_rejected_automatically",
+        "rejected_automatically"
+      )
+    if (!valid_row) {
+      .stop_invalid_goal002_prior(
+        "Prior evidence manifest provenance is invalid."
+      )
+    }
+
+    report <- readRDS(file.path(
+      output_dir,
+      paste0(unname(stubs[[profile_key]]), "-report.rds")
+    ))
+    report_rules <- index$assessment[
+      index$assessment$profile_key == profile_key,
+      setdiff(names(index$assessment), c("profile_key", "profile_id")),
+      drop = FALSE
+    ]
+    report_valid <- is.list(report) &&
+      identical(report$profile, expected_profile) &&
+      identical(report$profile_hash, expected_hash) &&
+      identical(report$effort_hash, expected_effort$effort_hash) &&
+      identical(report$effort_seed, runner$effort_seed) &&
+      identical(report$simulation_seed, expected_seed) &&
+      identical(report$n_draws, runner$n_draws) &&
+      identical(report$automatic_outcome, row$automatic_outcome[[1L]]) &&
+      identical(report$assessment, report_rules) &&
+      identical(
+        report$richness_pmf,
+        lower_bound_prior_pmf(
+          candidate_pool_size = goal002_prior_rules()$candidate_pool_size,
+          observed_richness = 0L,
+          omega_alpha = expected_profile$omega_alpha,
+          omega_beta = expected_profile$omega_beta
+        )
+      )
+    if (!report_valid) {
+      .stop_invalid_goal002_prior(
+        "Prior evidence report does not match aggregate provenance."
+      )
+    }
+  }
+  TRUE
+}
+
+.goal002_prior_directory_signature <- function(path) {
+  relative <- .goal002_prior_expected_inventory()
+  stats::setNames(vapply(relative, function(file) {
+    digest::digest(
+      file = file.path(path, file),
+      algo = "sha256",
+      serialize = FALSE
+    )
+  }, character(1)), relative)
+}
+
+.goal002_publish_prior_evidence <- function(staging, output_dir) {
+  parent <- dirname(output_dir)
+  base <- basename(output_dir)
+  existing_link <- .goal002_prior_readlink(output_dir)
+  existing_entry <- file.exists(output_dir) ||
+    dir.exists(output_dir) ||
+    nzchar(existing_link)
+  if (existing_entry && !nzchar(existing_link)) {
+    .stop_invalid_goal002_prior(paste0(
+      "Existing output_dir is a real directory, not an atomic evidence ",
+      "symlink; it was left unchanged."
+    ))
+  }
+  if (nzchar(existing_link)) {
+    if (!dir.exists(output_dir)) {
+      .stop_invalid_goal002_prior(
+        "Existing prior evidence symlink is broken."
+      )
+    }
+    resolved_existing <- normalizePath(output_dir, mustWork = TRUE)
+    valid_existing_target <- identical(dirname(resolved_existing), parent) &&
+      startsWith(
+        basename(resolved_existing),
+        paste0(".", base, "-version-")
+      )
+    if (!valid_existing_target) {
+      .stop_invalid_goal002_prior(
+        "Existing prior evidence symlink target is outside its contract."
+      )
+    }
+    validate_goal002_prior_output(output_dir)
+  }
+
+  index_hash <- digest::digest(
+    file = file.path(staging, "prior-check-index.rds"),
+    algo = "sha256",
+    serialize = FALSE
+  )
+  version_dir <- file.path(
+    parent,
+    paste0(".", base, "-version-", index_hash)
+  )
+  created_version <- FALSE
+  if (dir.exists(version_dir)) {
+    validate_goal002_prior_output(version_dir)
+    if (!identical(
+      .goal002_prior_directory_signature(staging),
+      .goal002_prior_directory_signature(version_dir)
+    )) {
+      .stop_invalid_goal002_prior(
+        "Prior evidence version hash collision has inconsistent content."
+      )
+    }
+    unlink(staging, recursive = TRUE, force = TRUE)
+  } else {
+    if (!file.rename(staging, version_dir)) {
+      .stop_invalid_goal002_prior(
+        "Could not move validated prior evidence into its version directory."
+      )
+    }
+    created_version <- TRUE
+    tryCatch(
+      validate_goal002_prior_output(version_dir),
+      error = function(error) {
+        unlink(version_dir, recursive = TRUE, force = TRUE)
+        stop(error)
+      }
+    )
+  }
+
+  temporary_link <- tempfile(
+    pattern = paste0(".", base, "-link-"),
+    tmpdir = parent
+  )
+  on.exit(unlink(temporary_link, force = TRUE), add = TRUE)
+  if (!file.symlink(basename(version_dir), temporary_link)) {
+    if (created_version) {
+      unlink(version_dir, recursive = TRUE, force = TRUE)
+    }
+    .stop_invalid_goal002_prior(
+      "Could not create the atomic prior evidence pointer."
+    )
+  }
+  if (!file.rename(temporary_link, output_dir)) {
+    if (created_version) {
+      unlink(version_dir, recursive = TRUE, force = TRUE)
+    }
+    .stop_invalid_goal002_prior(
+      "Could not atomically publish the prior evidence pointer."
+    )
+  }
+
+  if (nzchar(existing_link)) {
+    old_target <- normalizePath(
+      file.path(parent, existing_link),
+      mustWork = FALSE
+    )
+    new_target <- normalizePath(version_dir, mustWork = TRUE)
+    if (!identical(old_target, new_target) &&
+        identical(dirname(old_target), parent) &&
+        startsWith(
+          basename(old_target),
+          paste0(".", base, "-version-")
+        )) {
+      unlink(old_target, recursive = TRUE, force = TRUE)
+    }
+  }
+
+  list(
+    output_dir = output_dir,
+    publication_target = .goal002_prior_readlink(output_dir),
+    index_hash = index_hash
+  )
+}
+
+run_goal002_prior_checks <- function(
+  output_dir,
+  effort_seed,
+  prior_seed,
+  n_draws = goal002_prior_rules()$n_draws,
+  profile_completed = NULL,
+  verbose = FALSE
+) {
+  inputs <- .goal002_validate_prior_runner_inputs(
+    output_dir,
+    effort_seed,
+    prior_seed,
+    n_draws,
+    profile_completed
+  )
+  output_dir <- inputs$output_dir
+  parent <- dirname(output_dir)
+  base <- basename(output_dir)
+  existing_link <- .goal002_prior_readlink(output_dir)
+  existing_entry <- file.exists(output_dir) ||
+    dir.exists(output_dir) ||
+    nzchar(existing_link)
+  if (existing_entry && !nzchar(existing_link)) {
+    .stop_invalid_goal002_prior(paste0(
+      "Existing output_dir is a real directory, not an atomic evidence ",
+      "symlink; it was left unchanged."
+    ))
+  }
+
+  staging <- tempfile(
+    pattern = paste0(".", base, "-staging-"),
+    tmpdir = parent
+  )
+  if (!dir.create(staging, recursive = FALSE, showWarnings = FALSE)) {
+    .stop_invalid_goal002_prior(
+      "Could not create a fresh prior evidence staging directory."
+    )
+  }
+  on.exit({
+    if (nzchar(staging) && dir.exists(staging)) {
+      unlink(staging, recursive = TRUE, force = TRUE)
+    }
+  }, add = TRUE)
+
+  generated <- .goal002_write_prior_evidence(
+    directory = staging,
+    effort_seed = inputs$effort_seed,
+    prior_seed = inputs$prior_seed,
+    n_draws = inputs$n_draws,
+    profile_completed = inputs$profile_completed,
+    verbose = isTRUE(verbose)
+  )
+  validate_goal002_prior_output(staging)
+  publication <- .goal002_publish_prior_evidence(staging, output_dir)
+  staging <- ""
+
+  index <- generated$index
+  list(
+    output_dir = publication$output_dir,
+    publication_target = publication$publication_target,
+    index_hash = publication$index_hash,
+    manifest = index$manifest,
+    assessment = index$assessment,
+    automatic_rejected = any(
+      index$manifest$automatic_outcome == "rejected_automatically"
+    )
   )
 }
