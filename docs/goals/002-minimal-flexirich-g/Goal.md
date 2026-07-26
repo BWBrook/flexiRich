@@ -398,6 +398,35 @@ run manifests and concise acceptance logs are committed.
   Monte Carlo error; do not require bitwise equality across compiler, Stan or
   platform versions.
 
+## Richness convergence diagnostics
+
+The primary richness distribution is the Rao--Blackwellised
+Poisson-binomial PMF obtained from the continuous `q_member` draws. The
+integer `S_grid` draw generated from fresh Bernoulli RNG in each Stan
+iteration is a verification draw, not an HMC state. It must satisfy exact
+support and membership-reconstruction checks, but it is not assigned
+\(\widehat R\) or ESS gates. In particular, no jittered or fabricated ESS is
+used when a discrete quantile coincides with a richness boundary.
+
+Richness convergence is instead assessed for:
+
+- `expected_richness`, reconstructed from the per-candidate `q_member` draws;
+- a lower-tail probability series; and
+- an upper-tail probability series.
+
+For each HMC draw, the two tail series are conditional tail masses from that
+draw's Poisson-binomial PMF. Their fixed cutoffs are selected from the
+posterior-mean PMF as the proper lower and upper tail events whose nontrivial
+masses are closest to 0.05. Ties are resolved deterministically by preferring
+the larger tail mass and then the more extreme cutoff. These continuous
+derived quantities receive the same \(\widehat R\), bulk-ESS and tail-ESS
+gates as the other monitored continuous quantities.
+
+If \(C=S_{\mathrm{obs}}\), richness is a structural point mass: exact
+membership and richness reconstruction remain mandatory, while tail-mixing
+statistics are recorded as not applicable. If \(C>S_{\mathrm{obs}}\), a
+missing, non-finite or constant derived tail series fails closed.
+
 ## Development and validation separation
 
 Development uses one prespecified benchmark seed in each of the six pilot
@@ -532,10 +561,11 @@ advantage merely for recognising detected species.
     - zero post-warmup divergences;
     - zero maximum-treedepth hits;
     - no chain with E-BFMI below 0.3;
-    - \(\widehat R\le1.01\) for monitored continuous parameters and richness
-      summaries; and
+    - \(\widehat R\le1.01\) for monitored continuous parameters,
+      `expected_richness` and both Rao--Blackwellised richness-tail mass
+      series; and
     - bulk and tail effective sample sizes of at least 400 for monitored
-      continuous parameters and richness summaries.
+      continuous parameters and those three continuous richness summaries.
 21. At most one committed rescue configuration may be used after a primary
     fit fails.
 22. At least 57 of the 60 primary fits are clean after the allowed rescue, and

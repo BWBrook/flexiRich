@@ -1485,6 +1485,57 @@ git commit -m "feat: add frozen prior predictive checks"
 - Produces: `fit_flexirich_g(data, seed, prior_profile, output_dir, allow_rescue) -> flexirich_g_fit`
 - A fit contains immutable primary and optional rescue attempts plus terminal status.
 
+#### Pre-pilot richness-diagnostic amendment
+
+The first deterministic smoke run exposed an undefined default
+`posterior::ess_tail(S_grid)`: the bounded discrete richness support was
+`2:4`, its 95% quantile was the hard maximum 4, and the implementation's
+indicator `S_grid <= 4` was constant. The rescue chains otherwise had zero
+divergences, zero maximum-treedepth hits, minimum E-BFMI 0.815 and clean
+continuous diagnostics. This is resolved before any frozen pilot fit by
+diagnosing the Rao--Blackwellised richness distribution rather than the
+additional Bernoulli RNG used to generate `S_grid`.
+
+For HMC draw \(d\), compute the conditional Poisson-binomial PMF
+
+\[
+p_d(s)=P(S_{\mathrm{grid}}=s\mid q_{\cdot d})
+\]
+
+and its posterior mean
+\(\bar p(s)=D^{-1}\sum_{d=1}^{D}p_d(s)\). With \(\tau=0.05\):
+
+1. among proper lower cutoffs
+   \(t\in\{S_{\mathrm{obs}},\ldots,C-1\}\), select \(t_L\) for which
+   \(0<\sum_{s\le t}\bar p(s)<1\) is closest to \(\tau\);
+2. among proper upper cutoffs
+   \(t\in\{S_{\mathrm{obs}}+1,\ldots,C\}\), select \(t_U\) analogously from
+   \(0<\sum_{s\ge t}\bar p(s)<1\);
+3. break equal-distance ties by preferring the larger tail mass, then the more
+   extreme cutoff: smaller \(t_L\) or larger \(t_U\); and
+4. form continuous draw series
+   \(L_d=\sum_{s\le t_L}p_d(s)\) and
+   \(U_d=\sum_{s\ge t_U}p_d(s)\).
+
+Apply the unchanged \(\widehat R\le1.01\), bulk ESS \(\ge400\) and tail ESS
+\(\ge400\) gates to `expected_richness`, \(L_d\) and \(U_d\), as well as the
+other monitored continuous quantities. Persist the selected cutoffs, mean
+tail masses and their row-level diagnostics in each attempt's diagnostic
+metadata.
+
+`S_grid` receives no \(\widehat R\) or ESS gate because it is a
+Bernoulli-RNG generated quantity. It must still be integer-valued, lie in
+\([S_{\mathrm{obs}},C]\), reconstruct exactly from `g_member`, and later agree
+with the Rao--Blackwellised PMF within the specified Monte Carlo bound. Do not
+jitter it, waive a non-finite default ESS opportunistically, or assign a
+fabricated ESS.
+
+If \(C=S_{\mathrm{obs}}\), record `structural_point_mass`, require exact
+`q_member = g_member = 1` and `S_grid = S_obs`, and mark the richness-tail
+metrics explicitly not applicable. If \(C>S_{\mathrm{obs}}\), failure to
+construct two nontrivial finite tail series, or a constant/non-finite derived
+tail diagnostic, fails closed as `richness_tail_degenerate`.
+
 - [ ] **Step 1: Add failing pure diagnostic and attempt tests**
 
 ```r
@@ -1537,7 +1588,24 @@ production contracts without invoking CmdStan.
 
 Tests must monitor `omega`, `mu_alpha`, `sigma_alpha`, `sigma_camera`, every
 `alpha[i]`, every reconstructed `camera_effect[j]`, all zero-candidate
-`q_member[i]`, and `S_grid`.
+`q_member[i]`, `expected_richness`, and both derived richness-tail mass
+series. `S_grid` is checked through the exact generated-quantity contract
+above, not through continuous-chain diagnostics.
+
+In addition to the generic corruption tests, cover:
+
+- the observed bounded-discrete case in which default `ess_tail(S_grid)` is
+  `NA` while the Rao--Blackwellised tail diagnostics are finite;
+- lower- and upper-bound-dominant PMFs;
+- deterministic cutoff tie-breaking;
+- the structural-point-mass case \(C=S_{\mathrm{obs}}\);
+- fail-closed constant or non-finite derived tail series when
+  \(C>S_{\mathrm{obs}}\);
+- sticky or chain-shifted `q_member` draws even when generated `S_grid`
+  appears well mixed;
+- candidate-order invariance;
+- exact threshold-boundary behaviour; and
+- malformed, out-of-range or non-normalised membership/PMF inputs.
 
 - [ ] **Step 2: Run focused tests and confirm failure**
 
