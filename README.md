@@ -20,3 +20,21 @@ quarto render analysis/goal001_simulator.qmd --output-dir ../outputs/goal001
 
 Generated artefacts are written under `outputs/` and are not committed.
 Huon Ridge data and locations are outside this repository.
+
+## Goal 002
+
+```sh
+Rscript bootstrap_env.R
+Rscript scripts/setup_cmdstan.R
+Rscript scripts/run_tests.R
+Rscript scripts/check_stan_model.R
+Rscript scripts/run_goal002_smoke.R
+```
+
+CmdStan installation is explicit:
+
+```sh
+Rscript scripts/setup_cmdstan.R --install
+```
+
+Generated inference artefacts remain under `outputs/` and are not committed.
