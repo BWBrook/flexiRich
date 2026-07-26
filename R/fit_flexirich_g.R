@@ -532,8 +532,14 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
 .goal002_richness_row_diagnostics <- function(
   series,
   chain,
-  iteration
+  iteration,
+  expected_iterations
 ) {
+  expected_iterations <- .goal002_assert_integer(
+    expected_iterations,
+    "expected_iterations",
+    lower = 1L
+  )
   chains <- sort(unique(chain))
   if (!identical(chains, 1:4)) {
     stop("Richness diagnostics require chains 1:4.", call. = FALSE)
@@ -542,20 +548,23 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
     chains,
     function(x) sort(iteration[chain == x])
   )
-  if (any(vapply(iteration_sets, anyDuplicated, integer(1))) ||
-      !all(vapply(
-        iteration_sets[-1L],
-        identical,
-        logical(1),
-        iteration_sets[[1L]]
-      ))) {
+  required_iterations <- seq_len(expected_iterations)
+  complete <- all(vapply(
+    iteration_sets,
+    identical,
+    logical(1),
+    required_iterations
+  ))
+  if (!complete) {
     stop(
-      "Richness diagnostics require identical unique iterations per chain.",
+      paste0(
+        "Richness diagnostics require the complete chain-iteration grid."
+      ),
       call. = FALSE
     )
   }
 
-  n_iterations <- length(iteration_sets[[1L]])
+  n_iterations <- expected_iterations
   draw_array <- array(
     NA_real_,
     dim = c(
@@ -592,6 +601,7 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
   detected_ever,
   chain,
   iteration,
+  expected_iterations,
   tau = 0.05
 ) {
   if (!is.matrix(q_draws)) {
@@ -656,6 +666,14 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
     all(is.finite(iteration)) &&
     all(chain == trunc(chain)) &&
     all(iteration == trunc(iteration))
+  valid_expected_iterations <- is.numeric(expected_iterations) &&
+    !is.complex(expected_iterations) &&
+    length(expected_iterations) == 1L &&
+    !is.na(expected_iterations) &&
+    is.finite(expected_iterations) &&
+    expected_iterations == trunc(expected_iterations) &&
+    expected_iterations >= 1L &&
+    expected_iterations <= .Machine$integer.max
   if (!valid_q) {
     return(invalid_result(
       "q_member draws must be a non-empty finite matrix in [0, 1]."
@@ -669,6 +687,28 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
   if (!valid_indices) {
     return(invalid_result(
       "Richness chain and iteration identifiers are invalid."
+    ))
+  }
+  if (!valid_expected_iterations) {
+    return(invalid_result(
+      "expected_iterations must be one positive representable integer."
+    ))
+  }
+  expected_iterations <- as.integer(expected_iterations)
+  complete_grid <- identical(sort(unique(as.integer(chain))), 1:4) &&
+    all(vapply(
+      1:4,
+      function(chain_id) {
+        identical(
+          sort(as.integer(iteration[chain == chain_id])),
+          seq_len(expected_iterations)
+        )
+      },
+      logical(1)
+    ))
+  if (!complete_grid) {
+    return(invalid_result(
+      "Richness diagnostics require the complete chain-iteration grid."
     ))
   }
   if (any(q_draws[, detected_ever == 1L, drop = FALSE] != 1)) {
@@ -779,7 +819,12 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
   }
 
   row_diagnostics <- tryCatch(
-    .goal002_richness_row_diagnostics(series, chain, iteration),
+    .goal002_richness_row_diagnostics(
+      series,
+      chain,
+      iteration,
+      expected_iterations
+    ),
     error = function(e) NULL
   )
   diagnostic_values <- if (is.null(row_diagnostics)) {
@@ -1143,7 +1188,12 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
   valid_list <- is.list(sampler_diagnostics) &&
     identical(
       names(sampler_diagnostics),
-      c("expected_chains", "max_treedepth", "draws")
+      c(
+        "expected_chains",
+        "expected_iterations",
+        "max_treedepth",
+        "draws"
+      )
     )
   if (!valid_list) {
     return(.goal002_add_reason(
@@ -1154,6 +1204,7 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
   }
 
   expected_chains <- sampler_diagnostics$expected_chains
+  expected_iterations <- sampler_diagnostics$expected_iterations
   max_treedepth <- sampler_diagnostics$max_treedepth
   valid_scalars <- is.numeric(expected_chains) &&
     length(expected_chains) == 1L &&
@@ -1161,6 +1212,13 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
     is.finite(expected_chains) &&
     expected_chains == trunc(expected_chains) &&
     expected_chains == 4L &&
+    is.numeric(expected_iterations) &&
+    length(expected_iterations) == 1L &&
+    !is.na(expected_iterations) &&
+    is.finite(expected_iterations) &&
+    expected_iterations == trunc(expected_iterations) &&
+    expected_iterations >= 1L &&
+    expected_iterations <= .Machine$integer.max &&
     is.numeric(max_treedepth) &&
     length(max_treedepth) == 1L &&
     !is.na(max_treedepth) &&
@@ -1252,21 +1310,28 @@ compile_flexirich_g_model <- function(force_recompile = FALSE) {
   }
 
   if (identical(actual_chains, required_chains)) {
-    iteration_sets <- lapply(
+    required_iterations <- seq_len(as.integer(expected_iterations))
+    complete_iterations <- all(vapply(
       required_chains,
-      function(chain) sort(draws$.iteration[draws$.chain == chain])
-    )
-    same_iterations <- all(vapply(
-      iteration_sets[-1L],
-      identical,
-      logical(1),
-      iteration_sets[[1L]]
+      function(chain) {
+        identical(
+          sort(as.integer(
+            draws$.iteration[draws$.chain == chain]
+          )),
+          required_iterations
+        )
+      },
+      logical(1)
     ))
-    if (!same_iterations) {
+    if (!complete_iterations) {
       state <- .goal002_add_reason(
         state,
         "sampler_missing_iterations",
-        "Post-warmup iteration IDs differ among chains."
+        paste0(
+          "Every chain must contain post-warmup iterations 1:",
+          expected_iterations,
+          " exactly once."
+        )
       )
     }
   }
@@ -1840,7 +1905,8 @@ validate_goal002_diagnostics <- function(diagnostics) {
     q_draws = as.matrix(q_frame[q_names]),
     detected_ever = data$stan_data$detected_ever,
     chain = q_frame$.chain,
-    iteration = q_frame$.iteration
+    iteration = q_frame$.iteration,
+    expected_iterations = sampler_profile$iter_sampling
   )
   monitored <- base_monitored
   if (identical(richness$metadata$status, "estimated")) {
@@ -1874,6 +1940,7 @@ validate_goal002_diagnostics <- function(diagnostics) {
     ),
     sampler = list(
       expected_chains = sampler_profile$chains,
+      expected_iterations = sampler_profile$iter_sampling,
       max_treedepth = sampler_profile$max_treedepth,
       draws = sampler_draws
     )

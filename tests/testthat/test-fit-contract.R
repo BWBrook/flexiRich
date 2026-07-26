@@ -112,6 +112,7 @@ goal002_diagnostic_fixture <- function(clean = TRUE) {
     ),
     sampler = list(
       expected_chains = 4L,
+      expected_iterations = 12L,
       max_treedepth = 12L,
       draws = tibble::tibble(
         divergent__ = rep(0L, length(chains)),
@@ -486,6 +487,72 @@ testthat::test_that("malformed sampler diagnostics fail closed", {
   }
 })
 
+testthat::test_that("sampler completeness requires every frozen iteration", {
+  complete <- goal002_diagnostic_fixture()
+  testthat::expect_true(classify_goal002_diagnostics(
+    complete$summary,
+    complete$sampler,
+    goal002_diagnostic_thresholds()
+  )$clean)
+
+  cases <- list(
+    common_truncation = function(x) {
+      x$sampler$draws <- dplyr::filter(
+        x$sampler$draws,
+        .iteration <= 11L
+      )
+      x
+    },
+    common_internal_gap = function(x) {
+      x$sampler$draws <- dplyr::filter(
+        x$sampler$draws,
+        .iteration != 6L
+      )
+      x
+    },
+    extra_iterations = function(x) {
+      extra <- x$sampler$draws |>
+        dplyr::filter(.iteration == 12L) |>
+        dplyr::mutate(.iteration = 13L)
+      x$sampler$draws <- dplyr::bind_rows(
+        x$sampler$draws,
+        extra
+      )
+      x
+    },
+    noncanonical_start = function(x) {
+      x$sampler$draws$.iteration <-
+        x$sampler$draws$.iteration + 1L
+      x
+    }
+  )
+  for (case in names(cases)) {
+    diagnostics <- cases[[case]](goal002_diagnostic_fixture())
+    result <- classify_goal002_diagnostics(
+      diagnostics$summary,
+      diagnostics$sampler,
+      goal002_diagnostic_thresholds()
+    )
+    testthat::expect_false(result$clean, info = case)
+    testthat::expect_true(
+      "sampler_missing_iterations" %in% result$reasons,
+      info = case
+    )
+  }
+
+  for (value in list(0L, 12.5, NA_integer_, "12")) {
+    diagnostics <- goal002_diagnostic_fixture()
+    diagnostics$sampler$expected_iterations <- value
+    result <- classify_goal002_diagnostics(
+      diagnostics$summary,
+      diagnostics$sampler,
+      goal002_diagnostic_thresholds()
+    )
+    testthat::expect_false(result$clean)
+    testthat::expect_true("sampler_schema" %in% result$reasons)
+  }
+})
+
 testthat::test_that("the monitored variable contract includes only zero-candidate q rows", {
   fixture <- goal002_oracle_fixture(C = 4L)
   monitored <- .goal002_monitored_variables(fixture$data)
@@ -561,7 +628,8 @@ testthat::test_that("Rao-Blackwellised richness tails are finite and order invar
     fixture$q,
     fixture$detected_ever,
     fixture$chain,
-    fixture$iteration
+    fixture$iteration,
+    expected_iterations = 200L
   )
 
   testthat::expect_identical(result$metadata$status, "estimated")
@@ -583,7 +651,8 @@ testthat::test_that("Rao-Blackwellised richness tails are finite and order invar
     fixture$q[, permutation, drop = FALSE],
     fixture$detected_ever[permutation],
     fixture$chain,
-    fixture$iteration
+    fixture$iteration,
+    expected_iterations = 200L
   )
   testthat::expect_identical(
     permuted$metadata$lower_cutoff,
@@ -615,7 +684,8 @@ testthat::test_that("bounded S_grid tail ESS may be NA while RB tails are finite
     fixture$q,
     fixture$detected_ever,
     fixture$chain,
-    fixture$iteration
+    fixture$iteration,
+    expected_iterations = 200L
   )
   s_grid <- array(
     4,
@@ -646,7 +716,8 @@ testthat::test_that("structural richness point masses are explicit", {
     q,
     detected_ever = rep(1L, 3L),
     chain = rep(1:4, each = 10L),
-    iteration = rep(1:10, times = 4L)
+    iteration = rep(1:10, times = 4L),
+    expected_iterations = 10L
   )
 
   testthat::expect_identical(
@@ -672,7 +743,8 @@ testthat::test_that("invalid or degenerate richness tails fail closed", {
     constant,
     fixture$detected_ever,
     fixture$chain,
-    fixture$iteration
+    fixture$iteration,
+    expected_iterations = 200L
   )
   testthat::expect_identical(degenerate$metadata$status, "invalid")
   testthat::expect_match(degenerate$metadata$detail, "constant")
@@ -686,7 +758,8 @@ testthat::test_that("invalid or degenerate richness tails fail closed", {
       nonfinite,
       fixture$detected_ever,
       fixture$chain,
-      fixture$iteration
+      fixture$iteration,
+      expected_iterations = 200L
     )$metadata$status,
     "invalid"
   )
@@ -695,7 +768,8 @@ testthat::test_that("invalid or degenerate richness tails fail closed", {
       out_of_range,
       fixture$detected_ever,
       fixture$chain,
-      fixture$iteration
+      fixture$iteration,
+      expected_iterations = 200L
     )$metadata$status,
     "invalid"
   )
@@ -726,11 +800,30 @@ testthat::test_that("chain-shifted q draws fail richness convergence", {
     shifted,
     fixture$detected_ever,
     fixture$chain,
-    fixture$iteration
+    fixture$iteration,
+    expected_iterations = 200L
   )
 
   testthat::expect_identical(result$metadata$status, "estimated")
   testthat::expect_gt(max(result$metadata$row_diagnostics$rhat), 1.01)
+})
+
+testthat::test_that("richness reconstruction rejects incomplete chain IDs", {
+  fixture <- goal002_q_draw_fixture()
+  truncated <- fixture$iteration <= 199L
+  result <- .goal002_build_richness_diagnostics(
+    fixture$q[truncated, , drop = FALSE],
+    fixture$detected_ever,
+    fixture$chain[truncated],
+    fixture$iteration[truncated],
+    expected_iterations = 200L
+  )
+
+  testthat::expect_identical(result$metadata$status, "invalid")
+  testthat::expect_match(
+    result$metadata$detail,
+    "complete chain-iteration grid"
+  )
 })
 
 testthat::test_that("diagnostic threshold boundaries are inclusive", {
