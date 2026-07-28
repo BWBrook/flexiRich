@@ -1,0 +1,7 @@
+"run_id","run_type","prior_profile","cell_id","true_richness","n_occasions","replicate","simulation_seed","fit_seed"
+"development-c01-r01-primary","primary","primary",1,8,26,1,120020001,220020001
+"development-c02-r01-primary","primary","primary",2,20,26,1,120020002,220020002
+"development-c03-r01-primary","primary","primary",3,27,26,1,120020003,220020003
+"development-c04-r01-primary","primary","primary",4,8,208,1,120020004,220020004
+"development-c05-r01-primary","primary","primary",5,20,208,1,120020005,220020005
+"development-c06-r01-primary","primary","primary",6,27,208,1,120020006,220020006
