@@ -65,7 +65,26 @@ goal002_pilot_fixture <- function() {
       "summary.rds"
     ),
     elapsed_seconds = 1,
+    artifacts_verified = TRUE,
+    diagnostic_evidence = rep(
+      list(goal002_clean_diagnostic_evidence_fixture()),
+      dplyr::n()
+    ),
     posterior_pmf = pmfs
+  )
+}
+
+goal002_clean_diagnostic_evidence_fixture <- function() {
+  list(
+    passed = TRUE,
+    divergences = 0L,
+    treedepth_hits = 0L,
+    min_ebfmi = 0.8,
+    max_rhat = 1,
+    min_bulk_ess = 800,
+    min_tail_ess = 800,
+    richness_diagnostics_passed = TRUE,
+    generated_richness_passed = TRUE
   )
 }
 
@@ -287,6 +306,20 @@ testthat::test_that("rescue-clean inference is included and addressable", {
   )
 })
 
+testthat::test_that("Criterion 20 uses frozen diagnostic evidence", {
+  results <- goal002_pilot_fixture()
+  row <- which(results$run_type == "primary")[1L]
+  results$diagnostic_evidence[[row]]$max_rhat <- 1.02
+  results$diagnostic_evidence[[row]]$passed <- FALSE
+
+  gates <- evaluate_goal002_gates(results)
+  testthat::expect_false(gates$criterion_20$passed)
+  testthat::expect_equal(
+    gates$criterion_20$numerator,
+    95
+  )
+})
+
 testthat::test_that("Criterion 22 enforces overall and per-cell limits", {
   results <- goal002_pilot_fixture()
   primary <- which(results$run_type == "primary")
@@ -408,8 +441,339 @@ goal002_terminal_fixture <- function(
       ),
       elapsed_seconds = 1,
       manifest_hash = manifest_hash,
-      freeze_hash = freeze_hash
+      freeze_hash = freeze_hash,
+      artifacts_verified = TRUE,
+      diagnostic_evidence =
+        goal002_clean_diagnostic_evidence_fixture(),
+      posterior_pmf = {
+        probability <- numeric(31L)
+        probability[row$true_richness + 1L] <- 1
+        tibble::tibble(
+          richness = 0:30,
+          probability = probability
+        )
+      }
     )
+  )
+}
+
+goal002_pilot_diagnostics_fixture <- function(
+  clean,
+  observed_richness,
+  candidate_pool_size
+) {
+  metrics <- list(
+    divergences = if (clean) 0L else 1L,
+    treedepth_hits = 0L,
+    ebfmi_by_chain = stats::setNames(
+      rep(0.8, 4L),
+      as.character(1:4)
+    ),
+    min_ebfmi = 0.8,
+    max_rhat = 1,
+    min_bulk_ess = 800,
+    min_tail_ess = 800
+  )
+  richness <- list(
+    status = "estimated",
+    tau = 0.05,
+    observed_richness = observed_richness,
+    candidate_pool_size = candidate_pool_size,
+    lower_cutoff = observed_richness,
+    upper_cutoff = candidate_pool_size,
+    mean_lower_mass = 0.1,
+    mean_upper_mass = 0.1,
+    row_diagnostics = tibble::tibble(
+      variable = c(
+        "expected_richness",
+        "richness_lower_tail",
+        "richness_upper_tail"
+      ),
+      rhat = rep(1, 3L),
+      ess_bulk = rep(800, 3L),
+      ess_tail = rep(800, 3L)
+    ),
+    detail = ""
+  )
+  generated <- list(
+    status = "passed",
+    reasons = character(),
+    metrics = list(
+      n_draws = 40L,
+      candidate_pool_size = candidate_pool_size,
+      observed_richness = observed_richness,
+      max_expected_richness_error = 0
+    ),
+    details = character()
+  )
+  reasons <- if (clean) character() else "divergences"
+  list(
+    clean = clean,
+    reasons = reasons,
+    metrics = metrics,
+    richness = richness,
+    generated_richness = generated,
+    details = if (clean) {
+      character()
+    } else {
+      stats::setNames(
+        "One divergent transition was observed.",
+        reasons
+      )
+    }
+  )
+}
+
+goal002_pilot_attempt_fixture <- function(
+  data,
+  clean,
+  attempt_id
+) {
+  diagnostics <- goal002_pilot_diagnostics_fixture(
+    clean = clean,
+    observed_richness = sum(data$stan_data$detected_ever),
+    candidate_pool_size = data$stan_data$C
+  )
+  list(
+    attempt_id = attempt_id,
+    sampler_profile_id = if (attempt_id == "primary") {
+      "primary-sampler-v1"
+    } else {
+      "rescue-sampler-v1"
+    },
+    seed = if (attempt_id == "primary") 220020001L else 220520001L,
+    started_at_utc = "2026-07-28T00:00:00Z",
+    elapsed_seconds = 1,
+    model_source_hash = paste(rep("a", 64L), collapse = ""),
+    data_hash = data$data_hash,
+    prior_profile = "primary-v1",
+    R_version = as.character(getRversion()),
+    cmdstanr_version = as.character(utils::packageVersion("cmdstanr")),
+    cmdstan_version = "2.38.0",
+    compiler = "g++ test compiler",
+    output_files = if (clean) {
+      sprintf(
+        "outputs/goal002/fixture/%s/chain-%d.csv",
+        attempt_id,
+        1:4
+      )
+    } else {
+      character()
+    },
+    diagnostics = diagnostics,
+    clean = clean
+  )
+}
+
+goal002_pilot_fit_artifact <- function(
+  row,
+  terminal_status = "primary_clean"
+) {
+  simulation <- simulate_flexirich_g(flexirich_sim_config(
+    candidate_pool_size = 30L,
+    true_richness = row$true_richness,
+    n_cameras = 9L,
+    n_occasions = row$n_occasions,
+    seed = row$simulation_seed
+  ))
+  data <- sim_to_flexirich_g_data(simulation)
+  primary <- goal002_pilot_attempt_fixture(
+    data,
+    clean = terminal_status == "primary_clean",
+    attempt_id = "primary"
+  )
+  rescue <- if (terminal_status == "primary_clean") {
+    NULL
+  } else {
+    goal002_pilot_attempt_fixture(
+      data,
+      clean = terminal_status == "rescue_clean",
+      attempt_id = "rescue"
+    )
+  }
+  resolution <- resolve_goal002_attempts(primary, rescue)
+
+  C <- data$stan_data$C
+  J <- data$stan_data$J
+  G <- data$stan_data$G
+  variables <- c(
+    "omega",
+    "mu_alpha",
+    "sigma_alpha",
+    "sigma_camera",
+    sprintf("alpha[%d]", seq_len(C)),
+    sprintf("camera_effect[%d]", seq_len(J)),
+    sprintf("member_ll[%d]", seq_len(C)),
+    sprintf("q_member[%d]", seq_len(C)),
+    sprintf("g_member[%d]", seq_len(C)),
+    "S_grid",
+    "expected_richness",
+    sprintf("y_rep[%d]", seq_len(G))
+  )
+  draws <- matrix(
+    0,
+    nrow = 40L,
+    ncol = length(variables),
+    dimnames = list(NULL, variables)
+  )
+  draws[, "omega"] <- rep(c(0.4, 0.6), 20L)
+  draws[, "mu_alpha"] <- rep(c(-8, -7), 20L)
+  draws[, "sigma_alpha"] <- rep(c(0.8, 1.2), 20L)
+  draws[, "sigma_camera"] <- rep(c(0.4, 0.6), 20L)
+  for (candidate in seq_len(C)) {
+    draws[, sprintf("alpha[%d]", candidate)] <-
+      -8 + candidate / C + rep(c(-0.1, 0.1), 20L)
+  }
+  camera_effect <- seq(-0.4, 0.4, length.out = J)
+  camera_effect <- camera_effect - mean(camera_effect)
+  for (camera in seq_len(J)) {
+    draws[, sprintf("camera_effect[%d]", camera)] <-
+      camera_effect[[camera]]
+  }
+  detected <- data$stan_data$detected_ever == 1L
+  q <- matrix(0.2, nrow = 40L, ncol = C)
+  q[, detected] <- 1
+  g <- matrix(
+    withr::with_seed(
+      99002001L,
+      stats::rbinom(40L * C, 1L, as.vector(q))
+    ),
+    nrow = 40L,
+    ncol = C
+  )
+  g[, detected] <- 1
+  draws[, sprintf("q_member[%d]", seq_len(C))] <- q
+  draws[, sprintf("g_member[%d]", seq_len(C))] <- g
+  draws[, "S_grid"] <- rowSums(g)
+  draws[, "expected_richness"] <- rowSums(q)
+  draws[, sprintf("y_rep[%d]", seq_len(G))] <- matrix(
+    rep(data$stan_data$n_detected, each = 40L),
+    nrow = 40L,
+    ncol = G
+  )
+
+  fit <- list(
+    terminal_status = resolution$terminal_status,
+    rescue_used = resolution$rescue_used,
+    terminal_attempt_id = resolution$terminal_attempt_id,
+    candidate_ids = data$candidate_ids,
+    camera_ids = data$camera_ids,
+    detected_ever = data$stan_data$detected_ever,
+    observed = data$observed,
+    grouped = data$grouped,
+    data_hash = data$data_hash,
+    prior_profile = goal002_prior_profiles()$primary,
+    model_source_hash = primary$model_source_hash,
+    attempts = resolution$attempts,
+    draws = if (terminal_status == "final_nonclean") {
+      NULL
+    } else {
+      posterior::as_draws_matrix(draws)
+    }
+  )
+  class(fit) <- c("flexirich_g_fit", "list")
+  fit
+}
+
+goal002_materialize_terminal_fixture <- function(
+  root,
+  row = goal002_development_manifest()[1L, ],
+  terminal_status = "primary_clean",
+  manifest_hash = paste(rep("b", 64L), collapse = ""),
+  freeze_hash = NA_character_,
+  save_terminal = TRUE
+) {
+  run_dir <- file.path(
+    root,
+    "outputs",
+    "goal002",
+    "development",
+    row$run_id
+  )
+  dir.create(run_dir, recursive = TRUE)
+  fit <- goal002_pilot_fit_artifact(row, terminal_status)
+  for (attempt_id in names(fit$attempts)) {
+    attempt_dir <- file.path(run_dir, attempt_id)
+    dir.create(attempt_dir)
+    if (fit$attempts[[attempt_id]]$clean) {
+      files <- file.path(
+        attempt_dir,
+        sprintf("chain-%d.csv", 1:4)
+      )
+      file.create(files)
+      fit$attempts[[attempt_id]]$output_files <- file.path(
+        "outputs",
+        "goal002",
+        "development",
+        row$run_id,
+        attempt_id,
+        basename(files)
+      )
+    }
+  }
+  validate_flexirich_g_fit(fit)
+  summary <- summarise_flexirich_g(fit, fit$candidate_ids)
+  fit_path <- file.path(run_dir, "fit.rds")
+  summary_path <- file.path(run_dir, "summary.rds")
+  saveRDS(fit, fit_path)
+  saveRDS(summary, summary_path)
+
+  record <- c(
+    as.list(row),
+    list(
+      terminal_status = fit$terminal_status,
+      rescue_used = fit$rescue_used,
+      observed_richness = as.integer(sum(fit$detected_ever)),
+      data_hash = fit$data_hash,
+      model_hash = fit$model_source_hash,
+      primary_attempt_path = file.path(
+        "outputs",
+        "goal002",
+        "development",
+        row$run_id,
+        "primary"
+      ),
+      rescue_attempt_path = if (fit$rescue_used) {
+        file.path(
+          "outputs",
+          "goal002",
+          "development",
+          row$run_id,
+          "rescue"
+        )
+      } else {
+        NA_character_
+      },
+      summary_path = file.path(
+        "outputs",
+        "goal002",
+        "development",
+        row$run_id,
+        "summary.rds"
+      ),
+      elapsed_seconds = sum(vapply(
+        fit$attempts,
+        `[[`,
+        numeric(1),
+        "elapsed_seconds"
+      )),
+      manifest_hash = manifest_hash,
+      freeze_hash = freeze_hash,
+      artifacts_verified = TRUE,
+      diagnostic_evidence = .goal002_diagnostic_evidence(
+        fit$attempts[[fit$terminal_attempt_id]]
+      ),
+      posterior_pmf = summary$richness$pmf
+    )
+  )
+  if (save_terminal) {
+    saveRDS(record, file.path(run_dir, "terminal.rds"))
+  }
+  list(
+    run_dir = run_dir,
+    fit_path = fit_path,
+    summary_path = summary_path,
+    record = record
   )
 }
 
@@ -438,10 +802,16 @@ testthat::test_that("pilot CLI accepts exactly the two documented phases", {
 
 testthat::test_that("terminal action skips only complete matching records", {
   root <- withr::local_tempdir()
-  run_dir <- file.path(root, "run")
   manifest_hash <- paste(rep("b", 64L), collapse = "")
   freeze_hash <- paste(rep("c", 64L), collapse = "")
   row <- goal002_development_manifest()[1L, ]
+  run_dir <- file.path(
+    root,
+    "outputs",
+    "goal002",
+    "development",
+    row$run_id
+  )
 
   testthat::expect_identical(
     goal002_terminal_action(
@@ -453,7 +823,7 @@ testthat::test_that("terminal action skips only complete matching records", {
     "run"
   )
 
-  dir.create(run_dir)
+  dir.create(run_dir, recursive = TRUE)
   testthat::expect_error(
     goal002_terminal_action(
       run_dir,
@@ -464,12 +834,14 @@ testthat::test_that("terminal action skips only complete matching records", {
     "partial"
   )
 
-  record <- goal002_terminal_fixture(
+  unlink(run_dir, recursive = TRUE)
+  artifact <- goal002_materialize_terminal_fixture(
+    root,
     row,
-    manifest_hash,
-    freeze_hash
+    manifest_hash = manifest_hash,
+    freeze_hash = freeze_hash
   )
-  saveRDS(record, file.path(run_dir, "terminal.rds"))
+  record <- artifact$record
   testthat::expect_identical(
     goal002_terminal_action(
       run_dir,
@@ -493,6 +865,163 @@ testthat::test_that("terminal action skips only complete matching records", {
   )
 })
 
+testthat::test_that("terminal skip requires complete readable artefacts", {
+  root <- withr::local_tempdir()
+  manifest_hash <- paste(rep("b", 64L), collapse = "")
+  row <- goal002_development_manifest()[1L, ]
+
+  make <- function(label, status = "primary_clean") {
+    case_root <- file.path(root, label)
+    dir.create(case_root)
+    goal002_materialize_terminal_fixture(
+      case_root,
+      row,
+      terminal_status = status,
+      manifest_hash = manifest_hash
+    )
+  }
+  assert_rejected <- function(artifact, pattern) {
+    testthat::expect_error(
+      goal002_terminal_action(
+        artifact$run_dir,
+        row,
+        manifest_hash,
+        NA_character_
+      ),
+      pattern
+    )
+  }
+
+  valid <- make("valid")
+  testthat::expect_identical(
+    goal002_terminal_action(
+      valid$run_dir,
+      row,
+      manifest_hash,
+      NA_character_
+    ),
+    "skip"
+  )
+
+  missing_primary <- make("missing-primary")
+  unlink(file.path(missing_primary$run_dir, "primary"), recursive = TRUE)
+  assert_rejected(missing_primary, "attempt|artefact")
+
+  missing_rescue <- make("missing-rescue", "rescue_clean")
+  unlink(file.path(missing_rescue$run_dir, "rescue"), recursive = TRUE)
+  assert_rejected(missing_rescue, "attempt|artefact")
+
+  missing_summary <- make("missing-summary")
+  unlink(missing_summary$summary_path)
+  assert_rejected(missing_summary, "summary|artefact")
+
+  missing_fit <- make("missing-fit")
+  unlink(missing_fit$fit_path)
+  assert_rejected(missing_fit, "fit|artefact")
+
+  corrupt_summary <- make("corrupt-summary")
+  writeBin(charToRaw("not an RDS"), corrupt_summary$summary_path)
+  assert_rejected(corrupt_summary, "summary|unreadable|artefact")
+
+  corrupt_fit <- make("corrupt-fit")
+  writeBin(charToRaw("not an RDS"), corrupt_fit$fit_path)
+  assert_rejected(corrupt_fit, "fit|unreadable|artefact")
+
+  missing_output <- make("missing-output")
+  fit <- readRDS(missing_output$fit_path)
+  output <- file.path(
+    root,
+    "missing-output",
+    fit$attempts$primary$output_files[[1L]]
+  )
+  unlink(output)
+  assert_rejected(missing_output, "output|attempt|artefact")
+})
+
+testthat::test_that("terminal paths cannot escape or share run artefacts", {
+  root <- withr::local_tempdir()
+  manifest_hash <- paste(rep("b", 64L), collapse = "")
+  row <- goal002_development_manifest()[1L, ]
+
+  escaped <- goal002_materialize_terminal_fixture(
+    file.path(root, "escaped"),
+    row,
+    manifest_hash = manifest_hash
+  )
+  record <- readRDS(file.path(escaped$run_dir, "terminal.rds"))
+  record$summary_path <- file.path("..", "..", "outside.rds")
+  saveRDS(record, file.path(escaped$run_dir, "terminal.rds"))
+  testthat::expect_error(
+    goal002_terminal_action(
+      escaped$run_dir,
+      row,
+      manifest_hash,
+      NA_character_
+    ),
+    "path|escape|summary"
+  )
+
+  shared <- goal002_materialize_terminal_fixture(
+    file.path(root, "shared"),
+    row,
+    manifest_hash = manifest_hash
+  )
+  record <- readRDS(file.path(shared$run_dir, "terminal.rds"))
+  record$summary_path <- record$primary_attempt_path
+  saveRDS(record, file.path(shared$run_dir, "terminal.rds"))
+  testthat::expect_error(
+    goal002_terminal_action(
+      shared$run_dir,
+      row,
+      manifest_hash,
+      NA_character_
+    ),
+    "path|summary|shared"
+  )
+})
+
+testthat::test_that("terminal evidence must agree with fit and summary", {
+  root <- withr::local_tempdir()
+  manifest_hash <- paste(rep("b", 64L), collapse = "")
+  row <- goal002_development_manifest()[1L, ]
+
+  mismatch <- goal002_materialize_terminal_fixture(
+    file.path(root, "mismatch"),
+    row,
+    manifest_hash = manifest_hash
+  )
+  record <- readRDS(file.path(mismatch$run_dir, "terminal.rds"))
+  record$observed_richness <- record$observed_richness + 1L
+  saveRDS(record, file.path(mismatch$run_dir, "terminal.rds"))
+  testthat::expect_error(
+    goal002_terminal_action(
+      mismatch$run_dir,
+      row,
+      manifest_hash,
+      NA_character_
+    ),
+    "agree|observed|artefact"
+  )
+
+  diagnostic <- goal002_materialize_terminal_fixture(
+    file.path(root, "diagnostic"),
+    row,
+    manifest_hash = manifest_hash
+  )
+  fit <- readRDS(diagnostic$fit_path)
+  fit$attempts$primary$diagnostics$metrics$max_rhat <- 1.02
+  saveRDS(fit, diagnostic$fit_path)
+  testthat::expect_error(
+    goal002_terminal_action(
+      diagnostic$run_dir,
+      row,
+      manifest_hash,
+      NA_character_
+    ),
+    "diagnostic|R-hat|rhat"
+  )
+})
+
 testthat::test_that("development dispatcher resumes without replacing a run", {
   root <- withr::local_tempdir()
   dir.create(file.path(root, "config"))
@@ -506,7 +1035,13 @@ testthat::test_that("development dispatcher resumes without replacing a run", {
   calls$n <- 0L
   fake_runner <- function(row, run_dir, manifest_hash, freeze_hash) {
     calls$n <- calls$n + 1L
-    goal002_terminal_fixture(row, manifest_hash, freeze_hash)
+    goal002_materialize_terminal_fixture(
+      root,
+      row,
+      manifest_hash = manifest_hash,
+      freeze_hash = freeze_hash,
+      save_terminal = FALSE
+    )$record
   }
 
   first <- dispatch_goal002_pilot(

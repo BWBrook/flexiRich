@@ -37,6 +37,18 @@
   "final_nonclean"
 )
 
+.goal002_diagnostic_evidence_fields <- c(
+  "passed",
+  "divergences",
+  "treedepth_hits",
+  "min_ebfmi",
+  "max_rhat",
+  "min_bulk_ess",
+  "min_tail_ess",
+  "richness_diagnostics_passed",
+  "generated_richness_passed"
+)
+
 .stop_invalid_goal002_pilot <- function(message) {
   stop(message, call. = FALSE)
 }
@@ -455,7 +467,12 @@ goal002_gate_values <- function(run_result, C) {
   }
   results <- tibble::as_tibble(results)
   missing <- setdiff(
-    c(.goal002_terminal_fields, "posterior_pmf"),
+    c(
+      .goal002_terminal_fields,
+      "artifacts_verified",
+      "diagnostic_evidence",
+      "posterior_pmf"
+    ),
     names(results)
   )
   if (length(missing) > 0L) {
@@ -516,6 +533,22 @@ goal002_gate_values <- function(run_result, C) {
       "results$posterior_pmf must be a list-column."
     )
   }
+  if (!is.logical(results$artifacts_verified) ||
+      anyNA(results$artifacts_verified)) {
+    .stop_invalid_goal002_pilot(
+      "results$artifacts_verified must be complete logical data."
+    )
+  }
+  if (!is.list(results$diagnostic_evidence) ||
+      length(results$diagnostic_evidence) != nrow(results)) {
+    .stop_invalid_goal002_pilot(
+      "results$diagnostic_evidence must be a complete list-column."
+    )
+  }
+  lapply(
+    results$diagnostic_evidence,
+    .goal002_validate_diagnostic_evidence
+  )
   results
 }
 
@@ -577,10 +610,18 @@ evaluate_goal002_gates <- function(results) {
         .goal002_nonempty_path(results$rescue_attempt_path)
     ]
   )
-  unique_paths <- anyDuplicated(addressed_paths) == 0L
   attempts_ok <- primary_path_ok &
     rescue_path_ok &
-    summary_path_ok
+    summary_path_ok &
+    results$artifacts_verified
+  summary_paths <- results$summary_path[summary_path_ok]
+  fit_paths <- file.path(dirname(summary_paths), "fit.rds")
+  addressed_paths <- c(
+    addressed_paths,
+    summary_paths,
+    fit_paths
+  )
+  unique_paths <- anyDuplicated(addressed_paths) == 0L
   criterion_19 <- .goal002_criterion(
     19L,
     sum(attempts_ok),
@@ -598,23 +639,23 @@ evaluate_goal002_gates <- function(results) {
   )
 
   clean_rows <- results$terminal_status != "final_nonclean"
-  clean_inference <- vapply(
-    results$posterior_pmf,
-    function(pmf) !is.null(pmf),
+  diagnostic_contract_passed <- vapply(
+    results$diagnostic_evidence,
+    function(evidence) evidence$passed,
     logical(1)
   )
   criterion_20 <- .goal002_criterion(
     20L,
-    sum(clean_rows & clean_inference),
+    sum(clean_rows & diagnostic_contract_passed),
     sum(clean_rows),
-    sum(clean_rows & clean_inference),
+    sum(clean_rows & diagnostic_contract_passed),
     "all terminal-clean fits satisfy the frozen diagnostic contract",
-    all(!clean_rows | clean_inference),
+    all(!clean_rows | diagnostic_contract_passed),
     paste0(
-      sum(clean_rows & clean_inference),
+      sum(clean_rows & diagnostic_contract_passed),
       " of ",
       sum(clean_rows),
-      " terminal-clean rows expose validated inference."
+      " terminal-clean rows pass directly verified frozen diagnostics."
     )
   )
 
@@ -1068,6 +1109,136 @@ goal002_parse_pilot_args <- function(args) {
     grepl("^[0-9a-f]{64}$", x)
 }
 
+.goal002_diagnostic_evidence <- function(attempt) {
+  validate_goal002_attempt(attempt)
+  diagnostics <- attempt$diagnostics
+  metrics <- diagnostics$metrics
+  thresholds <- goal002_diagnostic_thresholds()
+  richness_rows <- diagnostics$richness$row_diagnostics
+  expected_richness_variables <- c(
+    "expected_richness",
+    "richness_lower_tail",
+    "richness_upper_tail"
+  )
+  richness_diagnostics_passed <-
+    identical(diagnostics$richness$status, "estimated") &&
+    tibble::is_tibble(richness_rows) &&
+    identical(
+      richness_rows$variable,
+      expected_richness_variables
+    ) &&
+    !anyNA(richness_rows) &&
+    all(is.finite(as.matrix(richness_rows[-1L]))) &&
+    all(richness_rows$rhat <= thresholds$max_rhat) &&
+    all(richness_rows$ess_bulk >= thresholds$min_bulk_ess) &&
+    all(richness_rows$ess_tail >= thresholds$min_tail_ess)
+  generated_richness_passed <- identical(
+    diagnostics$generated_richness$status,
+    "passed"
+  )
+  passed <- isTRUE(
+    identical(metrics$divergences, thresholds$max_divergences) &&
+    identical(
+      metrics$treedepth_hits,
+      thresholds$max_treedepth_hits
+    ) &&
+    is.numeric(metrics$ebfmi_by_chain) &&
+    length(metrics$ebfmi_by_chain) == 4L &&
+    !anyNA(metrics$ebfmi_by_chain) &&
+    all(is.finite(metrics$ebfmi_by_chain)) &&
+    all(metrics$ebfmi_by_chain >= thresholds$min_ebfmi) &&
+    is.numeric(metrics$max_rhat) &&
+    length(metrics$max_rhat) == 1L &&
+    !is.na(metrics$max_rhat) &&
+    is.finite(metrics$max_rhat) &&
+    metrics$max_rhat <= thresholds$max_rhat &&
+    is.numeric(metrics$min_bulk_ess) &&
+    length(metrics$min_bulk_ess) == 1L &&
+    !is.na(metrics$min_bulk_ess) &&
+    is.finite(metrics$min_bulk_ess) &&
+    metrics$min_bulk_ess >= thresholds$min_bulk_ess &&
+    is.numeric(metrics$min_tail_ess) &&
+    length(metrics$min_tail_ess) == 1L &&
+    !is.na(metrics$min_tail_ess) &&
+    is.finite(metrics$min_tail_ess) &&
+    metrics$min_tail_ess >= thresholds$min_tail_ess &&
+      richness_diagnostics_passed &&
+      generated_richness_passed
+  )
+
+  list(
+    passed = passed,
+    divergences = as.integer(metrics$divergences),
+    treedepth_hits = as.integer(metrics$treedepth_hits),
+    min_ebfmi = as.numeric(metrics$min_ebfmi),
+    max_rhat = as.numeric(metrics$max_rhat),
+    min_bulk_ess = as.numeric(metrics$min_bulk_ess),
+    min_tail_ess = as.numeric(metrics$min_tail_ess),
+    richness_diagnostics_passed =
+      richness_diagnostics_passed,
+    generated_richness_passed =
+      generated_richness_passed
+  )
+}
+
+.goal002_validate_diagnostic_evidence <- function(evidence) {
+  if (!is.list(evidence) ||
+      !identical(
+        names(evidence),
+        .goal002_diagnostic_evidence_fields
+      )) {
+    .stop_invalid_goal002_pilot(
+      "diagnostic evidence has an invalid component contract."
+    )
+  }
+  logical_fields <- c(
+    "passed",
+    "richness_diagnostics_passed",
+    "generated_richness_passed"
+  )
+  for (field in logical_fields) {
+    if (!is.logical(evidence[[field]]) ||
+        length(evidence[[field]]) != 1L ||
+        is.na(evidence[[field]])) {
+      .stop_invalid_goal002_pilot(
+        paste0("diagnostic evidence ", field, " is invalid.")
+      )
+    }
+  }
+  numeric_fields <- setdiff(
+    .goal002_diagnostic_evidence_fields,
+    logical_fields
+  )
+  for (field in numeric_fields) {
+    value <- evidence[[field]]
+    if (!is.numeric(value) ||
+        length(value) != 1L ||
+        (!is.na(value) && !is.finite(value)) ||
+        (evidence$passed && is.na(value))) {
+      .stop_invalid_goal002_pilot(
+        paste0("diagnostic evidence ", field, " is invalid.")
+      )
+    }
+  }
+  thresholds <- goal002_diagnostic_thresholds()
+  expected_passed <- isTRUE(
+    evidence$divergences == thresholds$max_divergences &&
+    evidence$treedepth_hits == thresholds$max_treedepth_hits &&
+    evidence$min_ebfmi >= thresholds$min_ebfmi &&
+    evidence$max_rhat <= thresholds$max_rhat &&
+    evidence$min_bulk_ess >= thresholds$min_bulk_ess &&
+    evidence$min_tail_ess >= thresholds$min_tail_ess &&
+      evidence$richness_diagnostics_passed &&
+      evidence$generated_richness_passed
+  )
+  if (!identical(evidence$passed, expected_passed)) {
+    .stop_invalid_goal002_pilot(
+      "diagnostic evidence passed flag disagrees with frozen thresholds."
+    )
+  }
+  TRUE
+}
+
 .goal002_validate_terminal_record <- function(
   record,
   manifest_row,
@@ -1083,7 +1254,10 @@ goal002_parse_pilot_args <- function(args) {
     c(
       .goal002_terminal_fields,
       "manifest_hash",
-      "freeze_hash"
+      "freeze_hash",
+      "artifacts_verified",
+      "diagnostic_evidence",
+      "posterior_pmf"
     ),
     names(record)
   )
@@ -1162,6 +1336,324 @@ goal002_parse_pilot_args <- function(args) {
       "terminal record elapsed_seconds is invalid."
     )
   }
+  if (!is.logical(record$artifacts_verified) ||
+      length(record$artifacts_verified) != 1L ||
+      is.na(record$artifacts_verified) ||
+      !record$artifacts_verified) {
+    .stop_invalid_goal002_pilot(
+      "terminal record lacks verified artefact evidence."
+    )
+  }
+  .goal002_validate_diagnostic_evidence(
+    record$diagnostic_evidence
+  )
+  TRUE
+}
+
+.goal002_run_layout <- function(run_dir, run_id) {
+  run_dir <- normalizePath(run_dir, mustWork = TRUE)
+  phase_dir <- dirname(run_dir)
+  goal_dir <- dirname(phase_dir)
+  outputs_dir <- dirname(goal_dir)
+  project_root <- dirname(outputs_dir)
+  valid <- identical(basename(run_dir), run_id) &&
+    basename(phase_dir) %in% c("development", "frozen") &&
+    identical(basename(goal_dir), "goal002") &&
+    identical(basename(outputs_dir), "outputs")
+  if (!valid) {
+    .stop_invalid_goal002_pilot(
+      "run directory does not match the canonical Goal 002 layout."
+    )
+  }
+  list(
+    run_dir = run_dir,
+    phase_dir = phase_dir,
+    project_root = project_root
+  )
+}
+
+.goal002_resolve_recorded_artifact <- function(
+  recorded_path,
+  expected_path,
+  layout,
+  label,
+  directory
+) {
+  if (!.goal002_nonempty_path(recorded_path)) {
+    .stop_invalid_goal002_pilot(
+      paste0(label, " path is missing.")
+    )
+  }
+  candidate <- if (startsWith(recorded_path, "/")) {
+    recorded_path
+  } else {
+    file.path(layout$project_root, recorded_path)
+  }
+  candidate <- tryCatch(
+    normalizePath(candidate, mustWork = TRUE),
+    error = function(e) {
+      .stop_invalid_goal002_pilot(
+        paste0(label, " artefact is missing or unreadable.")
+      )
+    }
+  )
+  expected <- tryCatch(
+    normalizePath(expected_path, mustWork = TRUE),
+    error = function(e) {
+      .stop_invalid_goal002_pilot(
+        paste0(label, " artefact is missing.")
+      )
+    }
+  )
+  inside_run <- startsWith(
+    expected,
+    paste0(layout$run_dir, .Platform$file.sep)
+  )
+  correct_type <- if (directory) {
+    dir.exists(expected)
+  } else {
+    file.exists(expected) && !dir.exists(expected)
+  }
+  if (!inside_run ||
+      !identical(candidate, expected) ||
+      !correct_type) {
+    .stop_invalid_goal002_pilot(
+      paste0(
+        label,
+        " path escapes, is shared, or disagrees with its exact run artefact."
+      )
+    )
+  }
+  expected
+}
+
+.goal002_read_rds_artifact <- function(path, label) {
+  tryCatch(
+    readRDS(path),
+    error = function(e) {
+      .stop_invalid_goal002_pilot(
+        paste0(label, " artefact is unreadable or corrupt.")
+      )
+    }
+  )
+}
+
+.goal002_validate_attempt_outputs <- function(
+  attempt,
+  attempt_dir,
+  layout
+) {
+  validate_goal002_attempt(attempt)
+  if (length(attempt$output_files) == 0L) {
+    if (attempt$clean) {
+      .stop_invalid_goal002_pilot(
+        "clean attempt output evidence is empty."
+      )
+    }
+    return(character())
+  }
+  resolved <- vapply(
+    attempt$output_files,
+    function(path) {
+      candidate <- if (startsWith(path, "/")) {
+        path
+      } else {
+        file.path(layout$project_root, path)
+      }
+      candidate <- tryCatch(
+        normalizePath(candidate, mustWork = TRUE),
+        error = function(e) {
+          .stop_invalid_goal002_pilot(
+            "attempt output artefact is missing or unreadable."
+          )
+        }
+      )
+      inside_attempt <- startsWith(
+        candidate,
+        paste0(attempt_dir, .Platform$file.sep)
+      )
+      if (!inside_attempt ||
+          dir.exists(candidate) ||
+          !file.exists(candidate)) {
+        .stop_invalid_goal002_pilot(
+          "attempt output path escapes or disagrees with its attempt."
+        )
+      }
+      candidate
+    },
+    character(1)
+  )
+  if (anyDuplicated(resolved)) {
+    .stop_invalid_goal002_pilot(
+      "attempt output paths are shared or duplicated."
+    )
+  }
+  resolved
+}
+
+.goal002_validate_terminal_artifacts <- function(
+  record,
+  manifest_row,
+  run_dir
+) {
+  layout <- .goal002_run_layout(run_dir, record$run_id)
+  primary_dir <- .goal002_resolve_recorded_artifact(
+    record$primary_attempt_path,
+    file.path(layout$run_dir, "primary"),
+    layout,
+    "primary attempt",
+    directory = TRUE
+  )
+  rescue_dir <- NULL
+  if (record$rescue_used) {
+    rescue_dir <- .goal002_resolve_recorded_artifact(
+      record$rescue_attempt_path,
+      file.path(layout$run_dir, "rescue"),
+      layout,
+      "rescue attempt",
+      directory = TRUE
+    )
+  }
+  summary_path <- .goal002_resolve_recorded_artifact(
+    record$summary_path,
+    file.path(layout$run_dir, "summary.rds"),
+    layout,
+    "summary",
+    directory = FALSE
+  )
+  fit_path <- .goal002_resolve_recorded_artifact(
+    file.path(
+      "outputs",
+      "goal002",
+      basename(layout$phase_dir),
+      record$run_id,
+      "fit.rds"
+    ),
+    file.path(layout$run_dir, "fit.rds"),
+    layout,
+    "fit",
+    directory = FALSE
+  )
+  fit <- .goal002_read_rds_artifact(fit_path, "fit")
+  summary <- .goal002_read_rds_artifact(
+    summary_path,
+    "summary"
+  )
+  fit_valid <- tryCatch(
+    validate_flexirich_g_fit(fit),
+    error = function(e) {
+      .stop_invalid_goal002_pilot(
+        paste0("fit artefact is invalid: ", conditionMessage(e))
+      )
+    }
+  )
+  summary_valid <- tryCatch(
+    validate_flexirich_g_summary(summary),
+    error = function(e) {
+      .stop_invalid_goal002_pilot(
+        paste0("summary artefact is invalid: ", conditionMessage(e))
+      )
+    }
+  )
+  if (!identical(fit_valid, TRUE) ||
+      !identical(summary_valid, TRUE)) {
+    .stop_invalid_goal002_pilot(
+      "fit or summary artefact validation failed."
+    )
+  }
+
+  expected_profile <- goal002_prior_profiles()[[
+    record$prior_profile
+  ]]
+  expected_attempt_id <- if (record$terminal_status == "primary_clean") {
+    "primary"
+  } else {
+    "rescue"
+  }
+  expected_observed <- as.integer(sum(fit$detected_ever))
+  agreement <- identical(fit$terminal_status, record$terminal_status) &&
+    identical(fit$rescue_used, record$rescue_used) &&
+    identical(fit$terminal_attempt_id, expected_attempt_id) &&
+    identical(fit$data_hash, record$data_hash) &&
+    identical(fit$model_source_hash, record$model_hash) &&
+    identical(fit$prior_profile, expected_profile) &&
+    identical(expected_observed, record$observed_richness) &&
+    identical(summary$terminal_status, record$terminal_status) &&
+    identical(summary$rescue_used, record$rescue_used) &&
+    identical(summary$metadata$data_hash, record$data_hash) &&
+    identical(
+      summary$metadata$model_source_hash,
+      record$model_hash
+    ) &&
+    identical(
+      summary$metadata$terminal_attempt_id,
+      expected_attempt_id
+    )
+  if (!agreement) {
+    .stop_invalid_goal002_pilot(
+      "terminal record does not agree with fit and summary artefacts."
+    )
+  }
+  if (length(fit$candidate_ids) != 30L) {
+    .stop_invalid_goal002_pilot(
+      "fit candidate pool disagrees with the frozen pilot size."
+    )
+  }
+  summary_pmf <- if (is.null(summary$richness)) {
+    NULL
+  } else {
+    summary$richness$pmf
+  }
+  if (!identical(record$posterior_pmf, summary_pmf)) {
+    .stop_invalid_goal002_pilot(
+      "terminal posterior PMF disagrees with summary artefact."
+    )
+  }
+
+  expected_evidence <- .goal002_diagnostic_evidence(
+    fit$attempts[[expected_attempt_id]]
+  )
+  if (!identical(
+    record$diagnostic_evidence,
+    expected_evidence
+  )) {
+    .stop_invalid_goal002_pilot(
+      "terminal diagnostic evidence disagrees with the fit artefact."
+    )
+  }
+  if (!identical(
+    summary$metadata$terminal_attempt,
+    fit$attempts[[expected_attempt_id]]
+  )) {
+    .stop_invalid_goal002_pilot(
+      "summary terminal attempt disagrees with the fit artefact."
+    )
+  }
+  if (record$terminal_status != "final_nonclean" &&
+      !expected_evidence$passed) {
+    .stop_invalid_goal002_pilot(
+      "terminal clean label fails the frozen diagnostic contract."
+    )
+  }
+
+  primary_outputs <- .goal002_validate_attempt_outputs(
+    fit$attempts$primary,
+    primary_dir,
+    layout
+  )
+  rescue_outputs <- character()
+  if (record$rescue_used) {
+    rescue_outputs <- .goal002_validate_attempt_outputs(
+      fit$attempts$rescue,
+      rescue_dir,
+      layout
+    )
+  }
+  if (anyDuplicated(c(primary_outputs, rescue_outputs))) {
+    .stop_invalid_goal002_pilot(
+      "output files are shared across immutable attempts."
+    )
+  }
   TRUE
 }
 
@@ -1215,6 +1707,11 @@ goal002_terminal_action <- function(
     manifest_row,
     manifest_hash,
     freeze_hash
+  )
+  .goal002_validate_terminal_artifacts(
+    record,
+    manifest_row,
+    run_dir
   )
   "skip"
 }
@@ -1614,6 +2111,10 @@ goal002_terminal_action <- function(
       elapsed_seconds = elapsed,
       manifest_hash = manifest_hash,
       freeze_hash = freeze_hash,
+      artifacts_verified = TRUE,
+      diagnostic_evidence = .goal002_diagnostic_evidence(
+        fit$attempts[[fit$terminal_attempt_id]]
+      ),
       posterior_pmf = if (is.null(summary$richness)) {
         NULL
       } else {
@@ -1628,8 +2129,15 @@ goal002_terminal_action <- function(
   values <- record[c(
     .goal002_terminal_fields,
     "manifest_hash",
-    "freeze_hash"
+    "freeze_hash",
+    "artifacts_verified"
   )]
+  evidence <- record$diagnostic_evidence
+  names(evidence) <- paste0(
+    "diagnostic_",
+    names(evidence)
+  )
+  values <- c(values, evidence)
   values$action <- action
   tibble::as_tibble(values)
 }
@@ -1740,6 +2248,11 @@ dispatch_goal002_pilot <- function(
       row,
       manifest_hash,
       freeze_hash
+    )
+    .goal002_validate_terminal_artifacts(
+      record,
+      row,
+      run_dir
     )
     .goal002_atomic_save_rds(
       record,
