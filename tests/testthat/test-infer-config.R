@@ -22,9 +22,9 @@ testthat::test_that("Goal 002 prior profiles are exact and named", {
     sensitivity_tail = utils::modifyList(
       primary,
       list(
-        profile_id = "sensitivity-tail-v1",
-        mu_alpha_scale = 3,
-        sigma_alpha_scale = 2.5
+        profile_id = "sensitivity-tail-v2",
+        mu_alpha_scale = 2.5,
+        sigma_alpha_scale = 1.75
       )
     )
   )
@@ -56,10 +56,10 @@ testthat::test_that("Goal 002 prior profiles are exact and named", {
     profiles$sensitivity_membership$omega_beta,
     0.5
   )
-  testthat::expect_equal(profiles$sensitivity_tail$mu_alpha_scale, 3)
+  testthat::expect_equal(profiles$sensitivity_tail$mu_alpha_scale, 2.5)
   testthat::expect_equal(
     profiles$sensitivity_tail$sigma_alpha_scale,
-    2.5
+    1.75
   )
 })
 

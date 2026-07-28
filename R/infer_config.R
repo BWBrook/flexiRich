@@ -129,9 +129,9 @@ goal002_prior_profiles <- function() {
     sensitivity_tail = utils::modifyList(
       primary,
       list(
-        profile_id = "sensitivity-tail-v1",
-        mu_alpha_scale = 3,
-        sigma_alpha_scale = 2.5
+        profile_id = "sensitivity-tail-v2",
+        mu_alpha_scale = 2.5,
+        sigma_alpha_scale = 1.75
       )
     )
   )
