@@ -460,6 +460,89 @@ testthat::test_that("summary validation fails closed on contract corruption", {
   }
 })
 
+testthat::test_that("validator rejects impossible observed candidate frequencies", {
+  fit <- goal002_fit_fixture()
+  summary <- summarise_flexirich_g(fit, fit$candidate_ids)
+  zero_row <- summary$posterior_predictive$
+    candidate_detection_frequencies$n_detections == 0L
+  summary$posterior_predictive$
+    candidate_detection_frequencies$observed_frequency[zero_row] <- 999L
+
+  testthat::expect_error(
+    validate_flexirich_g_summary(summary),
+    "frequency",
+    ignore.case = TRUE
+  )
+})
+
+testthat::test_that("validator rejects negative replicated PPC locations", {
+  fit <- goal002_fit_fixture()
+  summary <- summarise_flexirich_g(fit, fit$candidate_ids)
+  ppc <- summary$posterior_predictive
+  location_fields <- c(
+    "replicated_mean",
+    "replicated_q05",
+    "replicated_median",
+    "replicated_q95"
+  )
+
+  ppc$total_detections[location_fields] <- list(-3, -3, -2, -1)
+  ppc$detections_per_candidate$replicated_mean <-
+    c(-1.5, -1.5, 0, 0)
+  ppc$detections_per_camera$replicated_mean <- c(-2, -1)
+  for (field in location_fields[-1L]) {
+    ppc$detections_per_candidate[[field]] <-
+      rep(ppc$total_detections[[field]], 4L)
+    ppc$detections_per_camera[[field]] <-
+      rep(ppc$total_detections[[field]], 2L)
+    ppc$candidate_detection_frequencies[[field]] <-
+      rep(ppc$total_detections[[field]], 3L)
+  }
+  ppc$candidate_detection_frequencies$replicated_mean <-
+    rep(-1, 3L)
+  summary$posterior_predictive <- ppc
+
+  testthat::expect_error(
+    validate_flexirich_g_summary(summary),
+    "non-negative",
+    fixed = TRUE
+  )
+})
+
+testthat::test_that("validator enforces feasible replicated PPC bounds", {
+  fit <- goal002_fit_fixture()
+  baseline <- summarise_flexirich_g(fit, fit$candidate_ids)
+
+  excessive_frequency <- baseline
+  excessive_frequency$posterior_predictive$
+    candidate_detection_frequencies$replicated_q95[1L] <- 5
+  testthat::expect_error(
+    validate_flexirich_g_summary(excessive_frequency),
+    "candidate pool",
+    ignore.case = TRUE
+  )
+
+  excessive_margin <- baseline
+  excessive_margin$posterior_predictive$
+    detections_per_candidate$replicated_q95[1L] <-
+      excessive_margin$posterior_predictive$
+        total_detections$replicated_q95 + 1
+  testthat::expect_error(
+    validate_flexirich_g_summary(excessive_margin),
+    "total",
+    ignore.case = TRUE
+  )
+
+  excessive_frequency_mean <- baseline
+  excessive_frequency_mean$posterior_predictive$
+    candidate_detection_frequencies$replicated_mean <- c(2, 2, 2)
+  testthat::expect_error(
+    validate_flexirich_g_summary(excessive_frequency_mean),
+    "candidate pool",
+    ignore.case = TRUE
+  )
+})
+
 testthat::test_that("unused transformed draws do not suppress valid summaries", {
   fit <- goal002_fit_fixture()
   fit$draws[1L, "member_ll[3]"] <- -Inf

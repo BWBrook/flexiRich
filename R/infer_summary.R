@@ -508,6 +508,10 @@ summarise_flexirich_g <- function(fit, species_ids) {
   replicated <- as.matrix(table[
     paste0("replicated_", .flexirich_g_stat_fields)
   ])
+  replicated_locations <- table[paste0(
+    "replicated_",
+    c("mean", "q05", "median", "q95")
+  )]
   if (!is.integer(observed) ||
       anyNA(observed) ||
       any(observed < 0L) ||
@@ -519,6 +523,11 @@ summarise_flexirich_g <- function(fit, species_ids) {
       any(table$replicated_median > table$replicated_q95)) {
     .stop_invalid_flexirich_g_summary(
       paste0(label, " contains invalid observed or replicated summaries.")
+    )
+  }
+  if (any(as.matrix(replicated_locations) < 0)) {
+    .stop_invalid_flexirich_g_summary(
+      paste0(label, " replicated location summaries must be non-negative.")
     )
   }
   TRUE
@@ -822,6 +831,66 @@ validate_flexirich_g_summary <- function(summary) {
     label = "candidate-frequency summaries"
   )
   observed_total <- ppc$total_detections$observed
+  location_fields <- paste0(
+    "replicated_",
+    c("mean", "q05", "median", "q95")
+  )
+  expected_observed_frequencies <- vapply(
+    0:2,
+    function(count) {
+      as.integer(sum(
+        ppc$detections_per_candidate$observed == count
+      ))
+    },
+    integer(1)
+  )
+  frequency_table <- ppc$candidate_detection_frequencies
+  frequency_locations <- as.matrix(
+    frequency_table[location_fields]
+  )
+  valid_frequencies <- identical(
+    frequency_table$observed_frequency,
+    expected_observed_frequencies
+  ) &&
+    all(frequency_table$observed_frequency <= candidate_pool) &&
+    all(frequency_locations <= candidate_pool) &&
+    sum(frequency_table$replicated_mean) <= candidate_pool + 1e-10
+  if (!valid_frequencies) {
+    .stop_invalid_flexirich_g_summary(paste0(
+      "Candidate-frequency summaries must reconstruct observed 0/1/2 ",
+      "frequencies and remain within the candidate pool."
+    ))
+  }
+
+  total_locations <- unlist(
+    ppc$total_detections[location_fields],
+    use.names = TRUE
+  )
+  candidate_locations <- as.matrix(
+    ppc$detections_per_candidate[location_fields]
+  )
+  camera_locations <- as.matrix(
+    ppc$detections_per_camera[location_fields]
+  )
+  within_total <- all(sweep(
+    candidate_locations,
+    2L,
+    total_locations,
+    FUN = "<="
+  )) &&
+    all(sweep(
+      camera_locations,
+      2L,
+      total_locations,
+      FUN = "<="
+    ))
+  if (!within_total) {
+    .stop_invalid_flexirich_g_summary(paste0(
+      "Candidate and camera replicated locations must not exceed ",
+      "corresponding total-detection locations."
+    ))
+  }
+
   means_agree <- abs(
     sum(ppc$detections_per_candidate$replicated_mean) -
       ppc$total_detections$replicated_mean
