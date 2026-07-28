@@ -527,7 +527,8 @@ goal002_pilot_diagnostics_fixture <- function(
 goal002_pilot_attempt_fixture <- function(
   data,
   clean,
-  attempt_id
+  attempt_id,
+  fit_seed
 ) {
   diagnostics <- goal002_pilot_diagnostics_fixture(
     clean = clean,
@@ -541,7 +542,11 @@ goal002_pilot_attempt_fixture <- function(
     } else {
       "rescue-sampler-v1"
     },
-    seed = if (attempt_id == "primary") 220020001L else 220520001L,
+    seed = if (attempt_id == "primary") {
+      as.integer(fit_seed)
+    } else {
+      as.integer(fit_seed + 500000L)
+    },
     started_at_utc = "2026-07-28T00:00:00Z",
     elapsed_seconds = 1,
     model_source_hash = paste(rep("a", 64L), collapse = ""),
@@ -574,13 +579,15 @@ goal002_pilot_fit_artifact <- function(
     true_richness = row$true_richness,
     n_cameras = 9L,
     n_occasions = row$n_occasions,
+    occasion_days = 7L,
     seed = row$simulation_seed
   ))
   data <- sim_to_flexirich_g_data(simulation)
   primary <- goal002_pilot_attempt_fixture(
     data,
     clean = terminal_status == "primary_clean",
-    attempt_id = "primary"
+    attempt_id = "primary",
+    fit_seed = row$fit_seed
   )
   rescue <- if (terminal_status == "primary_clean") {
     NULL
@@ -588,7 +595,8 @@ goal002_pilot_fit_artifact <- function(
     goal002_pilot_attempt_fixture(
       data,
       clean = terminal_status == "rescue_clean",
-      attempt_id = "rescue"
+      attempt_id = "rescue",
+      fit_seed = row$fit_seed
     )
   }
   resolution <- resolve_goal002_attempts(primary, rescue)
@@ -681,7 +689,8 @@ goal002_materialize_terminal_fixture <- function(
   terminal_status = "primary_clean",
   manifest_hash = paste(rep("b", 64L), collapse = ""),
   freeze_hash = NA_character_,
-  save_terminal = TRUE
+  save_terminal = TRUE,
+  simulation_row = row
 ) {
   run_dir <- file.path(
     root,
@@ -691,7 +700,7 @@ goal002_materialize_terminal_fixture <- function(
     row$run_id
   )
   dir.create(run_dir, recursive = TRUE)
-  fit <- goal002_pilot_fit_artifact(row, terminal_status)
+  fit <- goal002_pilot_fit_artifact(simulation_row, terminal_status)
   for (attempt_id in names(fit$attempts)) {
     attempt_dir <- file.path(run_dir, attempt_id)
     dir.create(attempt_dir)
@@ -1019,6 +1028,81 @@ testthat::test_that("terminal evidence must agree with fit and summary", {
       NA_character_
     ),
     "diagnostic|R-hat|rhat"
+  )
+})
+
+testthat::test_that("terminal attempt seeds must match the manifest fit seed", {
+  root <- withr::local_tempdir()
+  manifest_hash <- paste(rep("b", 64L), collapse = "")
+  row <- goal002_development_manifest()[2L, ]
+
+  primary <- goal002_materialize_terminal_fixture(
+    file.path(root, "primary"),
+    row,
+    manifest_hash = manifest_hash
+  )
+  primary_fit <- readRDS(primary$fit_path)
+  primary_summary <- readRDS(primary$summary_path)
+  primary_fit$attempts$primary$seed <- row$fit_seed + 1L
+  primary_summary$metadata$terminal_attempt$seed <-
+    primary_fit$attempts$primary$seed
+  saveRDS(primary_fit, primary$fit_path)
+  saveRDS(primary_summary, primary$summary_path)
+  testthat::expect_error(
+    goal002_terminal_action(
+      primary$run_dir,
+      row,
+      manifest_hash,
+      NA_character_
+    ),
+    "seed"
+  )
+
+  rescue <- goal002_materialize_terminal_fixture(
+    file.path(root, "rescue"),
+    row,
+    terminal_status = "rescue_clean",
+    manifest_hash = manifest_hash
+  )
+  rescue_fit <- readRDS(rescue$fit_path)
+  rescue_summary <- readRDS(rescue$summary_path)
+  rescue_fit$attempts$rescue$seed <- row$fit_seed + 500001L
+  rescue_summary$metadata$terminal_attempt$seed <-
+    rescue_fit$attempts$rescue$seed
+  saveRDS(rescue_fit, rescue$fit_path)
+  saveRDS(rescue_summary, rescue$summary_path)
+  testthat::expect_error(
+    goal002_terminal_action(
+      rescue$run_dir,
+      row,
+      manifest_hash,
+      NA_character_
+    ),
+    "seed"
+  )
+})
+
+testthat::test_that("terminal data hash must match the manifest simulation", {
+  root <- withr::local_tempdir()
+  manifest_hash <- paste(rep("b", 64L), collapse = "")
+  row <- goal002_development_manifest()[2L, ]
+  simulation_row <- row
+  simulation_row$simulation_seed <- row$simulation_seed + 1L
+
+  artifact <- goal002_materialize_terminal_fixture(
+    root,
+    row,
+    manifest_hash = manifest_hash,
+    simulation_row = simulation_row
+  )
+  testthat::expect_error(
+    goal002_terminal_action(
+      artifact$run_dir,
+      row,
+      manifest_hash,
+      NA_character_
+    ),
+    "simulation|data hash|manifest"
   )
 })
 

@@ -1491,6 +1491,29 @@ goal002_parse_pilot_args <- function(args) {
   resolved
 }
 
+.goal002_data_from_manifest_row <- function(manifest_row) {
+  if (!tibble::is_tibble(manifest_row) ||
+      nrow(manifest_row) != 1L ||
+      !identical(names(manifest_row), .goal002_manifest_fields)) {
+    .stop_invalid_goal002_pilot(
+      "manifest_row must be one canonical manifest row."
+    )
+  }
+  config <- flexirich_sim_config(
+    candidate_pool_size = 30L,
+    true_richness = manifest_row$true_richness,
+    n_cameras = 9L,
+    n_occasions = manifest_row$n_occasions,
+    occasion_days = 7L,
+    seed = manifest_row$simulation_seed
+  )
+  simulation <- simulate_flexirich_g(config)
+  validate_flexirich_sim(simulation)
+  data <- sim_to_flexirich_g_data(simulation)
+  validate_flexirich_g_data(data)
+  data
+}
+
 .goal002_validate_terminal_artifacts <- function(
   record,
   manifest_row,
@@ -1597,6 +1620,31 @@ goal002_parse_pilot_args <- function(args) {
   if (length(fit$candidate_ids) != 30L) {
     .stop_invalid_goal002_pilot(
       "fit candidate pool disagrees with the frozen pilot size."
+    )
+  }
+  expected_primary_seed <- as.integer(manifest_row$fit_seed)
+  if (!identical(
+    fit$attempts$primary$seed,
+    expected_primary_seed
+  )) {
+    .stop_invalid_goal002_pilot(
+      "primary attempt seed disagrees with the manifest fit seed."
+    )
+  }
+  if (record$rescue_used &&
+      !identical(
+        fit$attempts$rescue$seed,
+        expected_primary_seed + 500000L
+      )) {
+    .stop_invalid_goal002_pilot(
+      "rescue attempt seed disagrees with the manifest fit seed."
+    )
+  }
+  expected_data <- .goal002_data_from_manifest_row(manifest_row)
+  if (!identical(expected_data$data_hash, fit$data_hash) ||
+      !identical(expected_data$data_hash, record$data_hash)) {
+    .stop_invalid_goal002_pilot(
+      "terminal data hash disagrees with the manifest simulation."
     )
   }
   summary_pmf <- if (is.null(summary$richness)) {
@@ -2052,16 +2100,7 @@ goal002_terminal_action <- function(
   freeze_hash,
   project_root
 ) {
-  config <- flexirich_sim_config(
-    candidate_pool_size = 30L,
-    true_richness = row$true_richness,
-    n_cameras = 9L,
-    n_occasions = row$n_occasions,
-    occasion_days = 7L,
-    seed = row$simulation_seed
-  )
-  simulation <- simulate_flexirich_g(config)
-  data <- sim_to_flexirich_g_data(simulation)
+  data <- .goal002_data_from_manifest_row(row)
   profile <- goal002_prior_profiles()[[row$prior_profile]]
   fit <- fit_flexirich_g(
     data = data,
