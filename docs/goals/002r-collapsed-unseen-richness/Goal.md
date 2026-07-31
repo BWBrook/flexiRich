@@ -1,6 +1,6 @@
 # Goal 002R — Collapsed unseen-richness computation
 
-Status: proposed for PI review
+Status: design approved — implementation not started
 Date defined: 2026-07-31
 
 ## Objective
