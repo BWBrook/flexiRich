@@ -29,6 +29,10 @@ Rscript scripts/setup_cmdstan.R
 Rscript scripts/run_tests.R
 Rscript scripts/check_stan_model.R
 Rscript scripts/run_goal002_smoke.R
+Rscript scripts/run_goal002_prior_check.R
+Rscript scripts/run_goal002_pilot.R --phase frozen
+quarto render analysis/goal002_baseline_recovery.qmd \
+  --output-dir ../outputs/goal002/report
 ```
 
 CmdStan installation is explicit:

@@ -1,6 +1,6 @@
 # Goal 002 — Minimal FlexiRich-G inference and pilot recovery
 
-Status: design approved — implementation not started
+Status: complete — informative method failure; see Log.md
 Date defined: 2026-07-26
 
 ## Objective

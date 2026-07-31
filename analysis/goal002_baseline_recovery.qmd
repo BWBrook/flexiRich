@@ -1,0 +1,824 @@
+---
+title: "Goal 002: frozen FlexiRich-G recovery pilot"
+subtitle: "Informative method failure under the correctly specified Goal 001 family"
+format:
+  html:
+    toc: true
+    toc-depth: 2
+    number-sections: true
+    code-fold: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+#| label: setup
+acceptance_dir <- file.path(
+  "..", "outputs", "goal002", "frozen", "acceptance"
+)
+required_evidence <- file.path(
+  acceptance_dir,
+  c(
+    "criteria.csv",
+    "gate-object.rds",
+    "validated-results.rds",
+    "validation-provenance.rds",
+    "provenance.csv",
+    "validation-checks.csv",
+    "status-counts.csv"
+  )
+)
+stopifnot(all(file.exists(required_evidence)))
+
+gate <- readRDS(file.path(acceptance_dir, "gate-object.rds"))
+results <- readRDS(file.path(acceptance_dir, "validated-results.rds"))
+validation <- readRDS(
+  file.path(acceptance_dir, "validation-provenance.rds")
+)
+criteria_frozen <- utils::read.csv(
+  file.path(acceptance_dir, "criteria.csv"),
+  stringsAsFactors = FALSE,
+  check.names = FALSE
+)
+provenance <- utils::read.csv(
+  file.path(acceptance_dir, "provenance.csv"),
+  stringsAsFactors = FALSE
+)
+status_counts <- utils::read.csv(
+  file.path(acceptance_dir, "status-counts.csv"),
+  stringsAsFactors = FALSE
+)
+prior_assessment <- utils::read.csv(
+  file.path(
+    "..", "outputs", "goal002", "prior-predictive",
+    "automatic-assessment.csv"
+  ),
+  stringsAsFactors = FALSE
+)
+prior_manifest <- utils::read.csv(
+  file.path(
+    "..", "outputs", "goal002", "prior-predictive",
+    "run-manifest.csv"
+  ),
+  stringsAsFactors = FALSE
+)
+
+stopifnot(
+  nrow(results) == 96L,
+  sum(results$run_type == "primary") == 60L,
+  sum(results$run_type == "sensitivity") == 36L,
+  !anyDuplicated(results$run_id),
+  all(results$artifacts_verified),
+  identical(criteria_frozen$criterion, 19:35),
+  sum(criteria_frozen$passed) == 14L,
+  identical(criteria_frozen$criterion[!criteria_frozen$passed], c(27L, 33L, 34L)),
+  nrow(prior_assessment) == 21L,
+  all(prior_assessment$passed)
+)
+
+profile_id <- c(
+  primary = "primary-v1",
+  sensitivity_membership = "sensitivity-membership-v1",
+  sensitivity_tail = "sensitivity-tail-v2"
+)
+duration_label <- c(`26` = "six months", `208` = "four years")
+
+format_count <- function(numerator, denominator) {
+  paste0(numerator, "/", denominator)
+}
+
+format_range <- function(x, digits = 2L) {
+  x <- x[is.finite(x)]
+  if (length(x) == 0L) {
+    return("suppressed")
+  }
+  value <- range(x)
+  paste0(
+    formatC(value[1L], format = "f", digits = digits),
+    "–",
+    formatC(value[2L], format = "f", digits = digits)
+  )
+}
+
+summary_objects <- lapply(
+  results$summary_path,
+  function(path) readRDS(file.path("..", path))
+)
+
+diagnostic_rows <- dplyr::bind_rows(lapply(
+  seq_len(nrow(results)),
+  function(index) {
+    diagnostics <- summary_objects[[index]]$diagnostics$terminal_attempt
+    metrics <- diagnostics$metrics
+    tibble::tibble(
+      run_id = results$run_id[index],
+      run_type = results$run_type[index],
+      prior_profile = results$prior_profile[index],
+      true_richness = results$true_richness[index],
+      n_occasions = results$n_occasions[index],
+      replicate = results$replicate[index],
+      terminal_status = results$terminal_status[index],
+      rescue_used = results$rescue_used[index],
+      clean = diagnostics$clean,
+      reasons = if (length(diagnostics$reasons)) {
+        paste(diagnostics$reasons, collapse = ", ")
+      } else {
+        "none"
+      },
+      divergences = metrics$divergences,
+      treedepth_hits = metrics$treedepth_hits,
+      min_ebfmi = metrics$min_ebfmi,
+      max_rhat = metrics$max_rhat,
+      min_bulk_ess = metrics$min_bulk_ess,
+      min_tail_ess = metrics$min_tail_ess
+    )
+  }
+))
+
+ppc_rows <- dplyr::bind_rows(lapply(
+  seq_len(nrow(results)),
+  function(index) {
+    summary <- summary_objects[[index]]
+    if (identical(summary$terminal_status, "final_nonclean")) {
+      return(NULL)
+    }
+    total <- summary$posterior_predictive$total_detections
+    tibble::tibble(
+      run_id = results$run_id[index],
+      run_type = results$run_type[index],
+      prior_profile = results$prior_profile[index],
+      true_richness = results$true_richness[index],
+      n_occasions = results$n_occasions[index],
+      observed_richness = results$observed_richness[index],
+      posterior_mean_richness = summary$richness$mean,
+      observed_total_detections = total$observed,
+      replicated_mean_detections = total$replicated_mean,
+      replicated_q05 = total$replicated_q05,
+      replicated_q95 = total$replicated_q95,
+      observed_in_replication_90 = total$observed >= total$replicated_q05 &
+        total$observed <= total$replicated_q95
+    )
+  }
+))
+
+primary <- gate$primary_gate_values |>
+  dplyr::mutate(
+    clean = terminal_status != "final_nonclean",
+    profile_id = profile_id[prior_profile],
+    duration = unname(duration_label[as.character(n_occasions)])
+  )
+
+primary_cell <- primary |>
+  dplyr::group_by(
+    run_type, profile_id, cell_id, true_richness, n_occasions, duration
+  ) |>
+  dplyr::summarise(
+    planned = dplyr::n(),
+    clean = sum(clean),
+    nonclean = sum(!clean),
+    rescues = sum(rescue_used),
+    observed_median = stats::median(observed_richness),
+    observed_range = format_range(observed_richness, 0L),
+    posterior_mean_median = stats::median(
+      posterior_mean[clean],
+      na.rm = TRUE
+    ),
+    posterior_mean_range = format_range(posterior_mean[clean], 2L),
+    coverage_90 = sum(covered_90),
+    median_absolute_error = stats::median(absolute_error),
+    raw_median_absolute_error = stats::median(
+      abs(observed_richness - true_richness)
+    ),
+    median_interval_width = stats::median(
+      interval_width[clean],
+      na.rm = TRUE
+    ),
+    median_rps = stats::median(rps),
+    median_baseline_rps = stats::median(baseline_rps),
+    .groups = "drop"
+  )
+
+status_by_cell <- results |>
+  dplyr::mutate(
+    profile_id = profile_id[prior_profile],
+    duration = unname(duration_label[as.character(n_occasions)])
+  ) |>
+  dplyr::group_by(
+    run_type, profile_id, cell_id, true_richness, n_occasions, duration
+  ) |>
+  dplyr::summarise(
+    planned = dplyr::n(),
+    primary_clean = sum(terminal_status == "primary_clean"),
+    rescue_clean = sum(terminal_status == "rescue_clean"),
+    final_nonclean = sum(terminal_status == "final_nonclean"),
+    rescues = sum(rescue_used),
+    observed_richness_median = stats::median(observed_richness),
+    observed_richness_range = format_range(observed_richness, 0L),
+    elapsed_seconds = sum(elapsed_seconds),
+    .groups = "drop"
+  )
+
+ppc_by_cell <- ppc_rows |>
+  dplyr::mutate(
+    profile_id = profile_id[prior_profile],
+    duration = unname(duration_label[as.character(n_occasions)])
+  ) |>
+  dplyr::group_by(
+    run_type, profile_id, true_richness, n_occasions, duration
+  ) |>
+  dplyr::summarise(
+    clean = dplyr::n(),
+    observed_richness_median = stats::median(observed_richness),
+    posterior_mean_richness_median = stats::median(
+      posterior_mean_richness
+    ),
+    observed_detections_median = stats::median(
+      observed_total_detections
+    ),
+    replicated_detections_median = stats::median(
+      replicated_mean_detections
+    ),
+    ppc_90 = sum(observed_in_replication_90),
+    .groups = "drop"
+  ) |>
+  dplyr::left_join(
+    status_by_cell |>
+      dplyr::select(
+        run_type, profile_id, true_richness, n_occasions,
+        planned, final_nonclean
+      ),
+    by = c(
+      "run_type", "profile_id", "true_richness", "n_occasions"
+    )
+  )
+
+sensitivity <- gate$sensitivity_gate_values |>
+  dplyr::mutate(
+    profile_id = profile_id[prior_profile],
+    duration = unname(duration_label[as.character(n_occasions)])
+  )
+
+sensitivity_summary <- sensitivity |>
+  dplyr::group_by(run_type, profile_id, n_occasions, duration) |>
+  dplyr::summarise(
+    planned_pairs = dplyr::n(),
+    clean_pairs = sum(!pair_nonclean),
+    nonclean_pairs = sum(pair_nonclean),
+    median_shift_frozen = stats::median(absolute_shift),
+    maximum_shift_frozen = max(absolute_shift),
+    median_shift_clean = stats::median(
+      absolute_shift[!pair_nonclean]
+    ),
+    maximum_shift_clean = max(absolute_shift[!pair_nonclean]),
+    .groups = "drop"
+  )
+
+diagnostic_summary <- diagnostic_rows |>
+  dplyr::mutate(profile_id = profile_id[prior_profile]) |>
+  dplyr::group_by(run_type, profile_id, terminal_status) |>
+  dplyr::summarise(
+    rows = dplyr::n(),
+    maximum_divergences = max(divergences),
+    maximum_treedepth_hits = max(treedepth_hits),
+    minimum_ebfmi = min(min_ebfmi),
+    maximum_rhat = max(max_rhat),
+    minimum_bulk_ess = min(min_bulk_ess),
+    minimum_tail_ess = min(min_tail_ess),
+    .groups = "drop"
+  )
+
+criteria_closure <- tibble::tribble(
+  ~criterion, ~numerator, ~denominator, ~statistic, ~threshold, ~verdict, ~evidence_id,
+  1L, 1, 1, "validated adapter excludes latent truth; truth mutation leaves input identical", "all observed inputs retained; no truth field", "PASS", "TEST:data-adapter; AUDIT:input-truth",
+  2L, 1, 1, "zero-effort cells add zero grouped trials", "exactly zero trials", "PASS", "TEST:zero-effort",
+  3L, 2, 2, "grouped trials and detections reconstruct sampled rows and detections", "exact equality for both totals", "PASS", "TEST:aggregation-reconstruction",
+  4L, 1, 1, "grouped and independent rowwise kernels agree", "absolute difference <= 1e-10(1+|oracle|)", "PASS", "TEST:grouped-rowwise-oracle",
+  5L, 4, 4, "analytic marginal likelihood agrees for C=1,2,3,4", "all 2^C vectors; tolerance 1e-12(1+|oracle|)", "PASS", "TEST:membership-enumeration",
+  6L, 2, 2, "stable detection and non-detection log terms match hand values", "absolute tolerance 1e-14", "PASS", "TEST:stable-hazard",
+  7L, 2, 2, "canonical data are byte-identical and grouped likelihood is identical after permutation", "no order effect", "PASS", "TEST:order-invariance",
+  8L, 1, 1, "detected-candidate membership is exactly one", "q_member = 1", "PASS", "TEST:posterior-membership; BRIDGE:q_member",
+  9L, 1, 1, "all-zero membership values are finite and bounded", "0 <= q_member <= 1", "PASS", "TEST:posterior-membership; BRIDGE:q_member",
+  10L, 1, 1, "generated richness is integer and within observed/candidate bounds", "S_obs <= S_grid <= C", "PASS", "TEST:generated-richness; SMOKE:support",
+  11L, 1, 1, "per-draw g_member sums reconstruct S_grid", "exact equality", "PASS", "TEST:generated-richness; SMOKE:reconstruction",
+  12L, 1, 1, "Rao-Blackwellised PMF is non-negative and normalised", "sum error <= 1e-14", "PASS", "TEST:richness-pmf",
+  13L, 1, 1, "exchangeable all-zero fixture candidates have equal marginal membership", "Monte Carlo tolerance contract", "PASS", "TEST:exchangeability",
+  14L, 1, 1, "added sampled zero-detection effort lowers conditional membership", "strict decrease at fixed continuous parameters", "PASS", "TEST:zero-effort-monotonicity",
+  15L, 21, 21, "30,000 prior draws; all profile-rule rows passed before recovery", "all 21 fixed rules pass", "PASS", "PRIOR:893ed214",
+  16L, 3, 3, "maximum analytical richness-PMF discrepancy = 0", "<= 1e-12 for each profile", "PASS", "PRIOR:richness-pmf",
+  17L, 2, 2, "centred camera truth preserves linear predictors and likelihood", "eta tolerance 1e-15; likelihood tolerance 1e-12", "PASS", "TEST:centered-truth",
+  18L, 1, 1, "mutated latent truth yields byte-identical inference data", "no truth field reaches fitted data", "PASS", "TEST:truth-isolation; AUDIT:input-truth",
+  36L, 2, 2, "CmdStan 2.38.0 setup and source-hashed Stan/R bridge passed", "Stan syntax and model bridge pass", "PASS", "T12:stan-bridge",
+  37L, 14, 14, "14 files (176 named test blocks); zero failure, warning or skip", "all files pass; zero failure/warning", "PASS", "T12:full-tests",
+  38L, 3, 3, "R 4.6.1, CmdStanR 0.9.0 and CmdStan 2.38.0; renv consistent", "renv, CmdStanR and CmdStan consistent", "PASS", "T12:environment",
+  39L, 96, 96, "frozen dispatcher completed 96 rows, zero skipped", "every manifest row and aggregate regenerates", "PASS", "FROZEN:validation-provenance",
+  40L, 1, 1, "canonical command produced a non-empty HTML report", "one non-empty HTML report", "PASS", "T12:render",
+  41L, 41, 41, "durable log records 38 passes, 3 failures and all required provenance", "all gates, failures, rescues, runtime and uncertainty recorded", "PASS", "T12:Log.md"
+)
+
+criteria_table <- criteria_frozen |>
+  dplyr::transmute(
+    criterion,
+    numerator,
+    denominator,
+    statistic = as.character(signif(statistic, 10L)),
+    threshold,
+    verdict = ifelse(passed, "PASS", "FAIL"),
+    evidence_id = paste0("FROZEN:criteria.csv#C", criterion)
+  ) |>
+  dplyr::bind_rows(criteria_closure) |>
+  dplyr::arrange(criterion) |>
+  dplyr::mutate(
+    fraction = format_count(numerator, denominator)
+  ) |>
+  dplyr::select(
+    criterion, fraction, statistic, threshold, verdict, evidence_id
+  )
+```
+
+The frozen 96-fit experiment completed, but the prespecified scientific gate
+failed Criteria 27, 33 and 34. Goal 002 therefore closes as an **informative
+method failure**, not as a blocked computation and not as approval to tune or
+rerun the pilot.
+
+## Estimand, model and interpretation boundary
+
+The estimand is whole-grid detectable-use richness,
+\(S_{\mathrm{grid}}=\sum_i g_i\), for a finite known pool of 30 eligible
+candidate species. Observed richness, \(S_{\mathrm{obs}}\), counts candidates
+detected at least once and is a hard lower bound. Known true richness is
+available only because these are correctly specified simulations; it never
+enters the fitted data.
+
+The fitted model analytically marginalises candidate membership, uses
+effort-aware binary detection with exact active camera-days, and estimates
+species and sum-to-zero camera effects on the log encounter-rate scale. The
+primary richness distribution is the Rao--Blackwellised Poisson-binomial mass
+function averaged over continuous posterior draws. `final_nonclean` rows
+retain diagnostics but expose no posterior inference.
+
+This report supports only implementation correctness and the recorded
+best-case behaviour under the Goal 001 synthetic family. It does not
+demonstrate empirical validity, robustness to misspecification,
+candidate-pool completeness, correct unseen-species identities, universal
+calibration, or superiority to another estimator.
+
+## Frozen design and status accounting
+
+The frozen design contains 60 primary fits (10 replicates in each of six
+duration-by-truth cells) and 36 prespecified sensitivities (three paired
+replicates per cell for each of two profiles). All 96 terminal records and
+1,129 retained artifact paths passed the independent acceptance validation.
+
+```{r}
+#| label: table-status-counts
+status_table <- status_counts |>
+  dplyr::mutate(profile_id = profile_id[prior_profile]) |>
+  dplyr::select(
+    `Run type` = run_type,
+    `Prior profile` = profile_id,
+    `Terminal status` = terminal_status,
+    `Rows` = n
+  )
+knitr::kable(
+  status_table,
+  caption = paste(
+    "Terminal status by run type and prior profile.",
+    "Posterior inference is suppressed for final_nonclean rows."
+  )
+)
+```
+
+Across all profiles, 43 rows were `primary_clean`, 49 were `rescue_clean`,
+four were `final_nonclean`, and 53 invoked the single allowed rescue.
+
+```{r}
+#| label: table-status-by-cell
+display_status_by_cell <- status_by_cell |>
+  dplyr::mutate(
+    `Clean/planned` = format_count(
+      primary_clean + rescue_clean,
+      planned
+    ),
+    `Observed richness median (range)` = paste0(
+      formatC(observed_richness_median, format = "f", digits = 1L),
+      " (", observed_richness_range, ")"
+    )
+  ) |>
+  dplyr::select(
+    `Run type` = run_type,
+    `Prior profile` = profile_id,
+    `Cell` = cell_id,
+    `Known truth` = true_richness,
+    `Occasions` = n_occasions,
+    `Duration` = duration,
+    `Planned` = planned,
+    `Primary clean` = primary_clean,
+    `Rescue clean` = rescue_clean,
+    `Final non-clean` = final_nonclean,
+    `Rescues` = rescues,
+    `Observed richness median (range)`
+  )
+knitr::kable(
+  display_status_by_cell,
+  caption = paste(
+    "All frozen cells and profiles.",
+    "Truth is a simulation label; observed richness is the data lower bound."
+  )
+)
+```
+
+## Prior-predictive evidence and PI decision
+
+Before development and frozen recovery, each profile used 10,000 fixed-seed
+prior draws. All 21 unchanged automatic numerical and design-informativeness
+rules passed. The evidence ID is
+`893ed2149d3608d8f62ce369c48337df46bbbc882e9cf86ba698307b1daf540d`.
+
+```{r}
+#| label: table-prior-decision
+prior_decision <- prior_manifest |>
+  dplyr::mutate(
+    `PI verdict` = "accept_provisionally",
+    `Verdict date (UTC)` = dplyr::case_when(
+      profile_id == "sensitivity-tail-v2" ~ "2026-07-30",
+      TRUE ~ "2026-07-28"
+    ),
+    `Automatic rules` = vapply(
+      profile_key,
+      function(key) {
+        rows <- prior_assessment$profile_key == key
+        format_count(sum(prior_assessment$passed[rows]), sum(rows))
+      },
+      character(1)
+    )
+  ) |>
+  dplyr::select(
+    `Profile role` = profile_key,
+    `Profile ID` = profile_id,
+    `Draws` = n_draws,
+    `Simulation seed` = simulation_seed,
+    `Automatic rules`,
+    `Automatic outcome` = automatic_outcome,
+    `PI verdict`,
+    `Verdict date (UTC)`
+  )
+knitr::kable(
+  prior_decision,
+  caption = paste(
+    "Prior-predictive numerical evidence and explicit PI verdicts.",
+    "Provisional acceptance was restricted to this synthetic pilot."
+  )
+)
+```
+
+The accepted tail sensitivity is `sensitivity-tail-v2`
+(\(\mu_\alpha\) scale 2.5, \(\sigma_\alpha\) scale 1.75), following the one
+permitted pre-recovery revision. An automatic pass was not treated as an
+ecological judgement.
+
+## HMC diagnostics and rescue use
+
+A terminal clean fit required zero divergences, zero maximum-treedepth hits,
+minimum E-BFMI at least 0.3, maximum \(\widehat R\) at most 1.01, and minimum
+bulk and tail ESS at least 400 for all monitored continuous quantities,
+including the Rao--Blackwellised richness summaries.
+
+```{r}
+#| label: table-diagnostic-summary
+display_diagnostics <- diagnostic_summary |>
+  dplyr::select(
+    `Run type` = run_type,
+    `Prior profile` = profile_id,
+    `Terminal status` = terminal_status,
+    `Rows` = rows,
+    `Max divergences` = maximum_divergences,
+    `Max treedepth hits` = maximum_treedepth_hits,
+    `Min E-BFMI` = minimum_ebfmi,
+    `Max R-hat` = maximum_rhat,
+    `Min bulk ESS` = minimum_bulk_ess,
+    `Min tail ESS` = minimum_tail_ess
+  )
+knitr::kable(
+  display_diagnostics,
+  digits = 3,
+  caption = paste(
+    "Terminal-attempt diagnostics by run type, profile and status.",
+    "The extrema describe each displayed status group."
+  )
+)
+```
+
+```{r}
+#| label: table-final-nonclean
+nonclean_table <- diagnostic_rows |>
+  dplyr::filter(!clean) |>
+  dplyr::mutate(
+    `Prior profile` = profile_id[prior_profile],
+    `Posterior inference` = "suppressed"
+  ) |>
+  dplyr::select(
+    `Run ID` = run_id,
+    `Run type` = run_type,
+    `Prior profile`,
+    `Known truth` = true_richness,
+    `Occasions` = n_occasions,
+    `Replicate` = replicate,
+    `Terminal status` = terminal_status,
+    `Failure` = reasons,
+    `Divergences` = divergences,
+    `Max R-hat` = max_rhat,
+    `Min tail ESS` = min_tail_ess,
+    `Posterior inference`
+  )
+knitr::kable(
+  nonclean_table,
+  digits = 3,
+  caption = "All four terminal non-clean fits; none is interpreted posteriorly."
+)
+```
+
+The four-year membership-sensitivity failure had minimum tail ESS
+288.803 after rescue. It remains in all status and gate denominators.
+
+## Four-year recovery by true-richness cell
+
+All three four-year primary cells were terminal-clean in 10/10 rows and had
+90% interval coverage in 10/10 rows. The table remains cell-level: pooled
+summaries do not replace it.
+
+```{r}
+#| label: table-four-year-recovery
+four_year_table <- primary_cell |>
+  dplyr::filter(n_occasions == 208L) |>
+  dplyr::mutate(
+    `Clean/planned` = format_count(clean, planned),
+    `Observed median (range)` = paste0(
+      formatC(observed_median, format = "f", digits = 1L),
+      " (", observed_range, ")"
+    ),
+    `Posterior mean median (range)` = paste0(
+      formatC(posterior_mean_median, format = "f", digits = 2L),
+      " (", posterior_mean_range, ")"
+    ),
+    `90% coverage` = format_count(coverage_90, planned)
+  ) |>
+  dplyr::select(
+    `Run type` = run_type,
+    `Prior profile` = profile_id,
+    `Cell` = cell_id,
+    `Known truth` = true_richness,
+    `Observed median (range)`,
+    `Posterior mean median (range)`,
+    `Clean/planned`,
+    `Rescues` = rescues,
+    `90% coverage`,
+    `Median posterior abs. error` = median_absolute_error,
+    `Median observed abs. error` = raw_median_absolute_error,
+    `Median 90% width` = median_interval_width
+  )
+knitr::kable(
+  four_year_table,
+  digits = 3,
+  caption = paste(
+    "Four-year primary recovery in each known-truth cell.",
+    "Posterior summaries use clean fits; gate errors retain fixed denominators."
+  )
+)
+```
+
+Across the 30 four-year primary rows, the posterior mean's median absolute
+error was 1.096702 species, below the two-species gate but above the raw
+observed-richness median absolute error of 1. The posterior was individually
+closer to truth in 18/30 rows, but Criterion 27 compares medians and therefore
+failed.
+
+## Six-month partial-information behaviour
+
+The six-month cells contain 30 planned primary rows and 29 clean posterior
+summaries. The retained non-clean primary row is a noncoverage and receives
+the frozen error penalties; it does not contribute a posterior mean or
+interval width.
+
+```{r}
+#| label: table-six-month-recovery
+six_month_table <- primary_cell |>
+  dplyr::filter(n_occasions == 26L) |>
+  dplyr::mutate(
+    `Clean/planned` = format_count(clean, planned),
+    `Observed median (range)` = paste0(
+      formatC(observed_median, format = "f", digits = 1L),
+      " (", observed_range, ")"
+    ),
+    `Posterior mean median (range)` = paste0(
+      formatC(posterior_mean_median, format = "f", digits = 2L),
+      " (", posterior_mean_range, ")"
+    ),
+    `90% coverage` = format_count(coverage_90, planned)
+  ) |>
+  dplyr::select(
+    `Run type` = run_type,
+    `Prior profile` = profile_id,
+    `Cell` = cell_id,
+    `Known truth` = true_richness,
+    `Observed median (range)`,
+    `Posterior mean median (range)`,
+    `Clean/planned`,
+    `Final non-clean` = nonclean,
+    `Rescues` = rescues,
+    `90% coverage`,
+    `Median frozen abs. error` = median_absolute_error,
+    `Median observed abs. error` = raw_median_absolute_error,
+    `Median clean 90% width` = median_interval_width
+  )
+knitr::kable(
+  six_month_table,
+  digits = 3,
+  caption = paste(
+    "Six-month primary behaviour in each known-truth cell.",
+    "Wide posterior ranges express partial information rather than sharp identification."
+  )
+)
+```
+
+The 90% interval covered truth in 28/30 scheduled rows. This is a coarse
+pilot screen, not evidence of nominal calibration. No hard six-month
+point-accuracy or sharpness threshold was applied.
+
+## Full posterior RPS versus the lower-bound-conditioned comparator
+
+The comparator conditions on detected candidates being members but ignores
+all zero-detection histories, effort and encounter likelihood. It therefore
+shares the observed-richness lower bound. The unnormalised discrete ranked
+probability score (RPS; lower is better) compares full richness
+distributions, not just point estimates.
+
+```{r}
+#| label: table-four-year-rps
+rps_table <- primary |>
+  dplyr::filter(n_occasions == 208L) |>
+  dplyr::group_by(
+    run_type, profile_id, cell_id, true_richness, n_occasions
+  ) |>
+  dplyr::summarise(
+    planned = dplyr::n(),
+    clean = sum(clean),
+    posterior_better = sum(rps < baseline_rps),
+    median_posterior_rps = stats::median(rps),
+    median_comparator_rps = stats::median(baseline_rps),
+    .groups = "drop"
+  ) |>
+  dplyr::mutate(
+    `Clean/planned` = format_count(clean, planned),
+    `Posterior better` = format_count(posterior_better, planned)
+  ) |>
+  dplyr::select(
+    `Run type` = run_type,
+    `Prior profile` = profile_id,
+    `Cell` = cell_id,
+    `Known truth` = true_richness,
+    `Clean/planned`,
+    `Posterior better`,
+    `Median posterior RPS` = median_posterior_rps,
+    `Median comparator RPS` = median_comparator_rps
+  )
+knitr::kable(
+  rps_table,
+  digits = 3,
+  caption = "Four-year full-distribution RPS by known-truth cell."
+)
+```
+
+The pooled frozen gate used all 30 scheduled four-year primary rows: median
+posterior RPS was 0.604592 versus 9.093747 for the comparator, and the
+posterior RPS was smaller in 29/30 rows. This does not establish superiority
+to an empirical estimator or to a separately fitted model.
+
+## Prior sensitivity
+
+Sensitivity shifts compare paired posterior means with the matching primary
+run. Rows whose sensitivity or paired primary fit is terminal non-clean use
+the frozen candidate-pool-sized sentinel of 30 and remain uninterpreted.
+
+```{r}
+#| label: table-sensitivity
+display_sensitivity <- sensitivity_summary |>
+  dplyr::mutate(
+    `Clean/planned pairs` = format_count(clean_pairs, planned_pairs)
+  ) |>
+  dplyr::select(
+    `Run type` = run_type,
+    `Prior profile` = profile_id,
+    `Duration` = duration,
+    `Occasions` = n_occasions,
+    `Clean/planned pairs`,
+    `Non-clean pairs` = nonclean_pairs,
+    `Median shift, frozen policy` = median_shift_frozen,
+    `Maximum shift, frozen policy` = maximum_shift_frozen,
+    `Median shift, clean pairs` = median_shift_clean,
+    `Maximum shift, clean pairs` = maximum_shift_clean
+  )
+knitr::kable(
+  display_sensitivity,
+  digits = 3,
+  caption = paste(
+    "Paired prior sensitivity by duration and profile.",
+    "Frozen-policy columns include the non-clean sentinel where applicable."
+  )
+)
+```
+
+Clean four-year shifts were small: membership-profile median 0.173871
+(8/9 clean pairs), tail-profile median 0.200727 (9/9), and tail maximum
+1.009819. Nevertheless, one four-year membership sensitivity was
+`final_nonclean`; the frozen sentinel of 30 makes Criteria 33 and 34 fail.
+The value 30 is a penalty, not a fitted 30-species displacement.
+
+## Posterior predictive checks
+
+For every terminal-clean row, posterior predictive summaries retain total,
+candidate-level and camera-level detection counts. The table below compares
+the observed total with the posterior replicated distribution. Non-clean rows
+are counted but have no posterior predictive product.
+
+```{r}
+#| label: table-ppc
+display_ppc <- ppc_by_cell |>
+  dplyr::mutate(
+    `Clean/planned` = format_count(clean, planned),
+    `Observed within replicated 90%` = format_count(ppc_90, clean)
+  ) |>
+  dplyr::select(
+    `Run type` = run_type,
+    `Prior profile` = profile_id,
+    `Known truth` = true_richness,
+    `Duration` = duration,
+    `Clean/planned`,
+    `Final non-clean` = final_nonclean,
+    `Observed richness median` = observed_richness_median,
+    `Posterior mean richness median` = posterior_mean_richness_median,
+    `Observed detections median` = observed_detections_median,
+    `Replicated detections median` = replicated_detections_median,
+    `Observed within replicated 90%`
+  )
+knitr::kable(
+  display_ppc,
+  digits = 2,
+  caption = paste(
+    "Posterior predictive total-detection checks by profile and cell.",
+    "Truth, observation, posterior inference and terminal status are separated."
+  )
+)
+```
+
+These checks assess consistency with the fitted correctly specified
+observation model. They cannot diagnose untested misspecification, incomplete
+candidate pools, false positives, temporal turnover or spatial dependence.
+
+## Every acceptance gate, including failures
+
+The table records all 41 Goal criteria. Criteria 19--35 are the immutable
+frozen gate records; the remaining rows are explicit implementation,
+prior-predictive and Task 12 closure checks. A failure is retained as evidence
+and is not converted into a pass by a descriptive clean-only analysis.
+
+```{r}
+#| label: table-all-criteria
+knitr::kable(
+  criteria_table,
+  caption = paste(
+    "Complete Goal 002 acceptance ledger.",
+    "Fraction is numerator/denominator under the criterion's stated contract."
+  )
+)
+```
+
+The frozen scientific subset passed 14/17 gates and failed 3/17. Criterion
+27 failed the prespecified strict comparison of median absolute errors.
+Criteria 33 and 34 failed because the non-clean four-year membership
+sensitivity must receive the frozen sentinel and remain uninterpreted.
+
+## Limitations and Goal 003 recommendation
+
+The pilot has only 10 primary replicates per cell and three paired
+sensitivities per cell. Membership and the lower encounter-rate tail remain
+weakly identified when candidates are never detected. Rescue use was common
+(53/96 rows), and four rows remained non-clean. The results cover only the
+correctly specified Goal 001 process with a finite known candidate pool,
+Gaussian log-rate effects, nine cameras and two durations.
+
+Deferred work includes misspecified encounter distributions,
+membership--detectability dependence, temporal and spatial dependence,
+candidate-pool uncertainty, false positives, other occasion lengths,
+sampling-intensity curves, classical or hierarchical comparators, empirical
+Judbury data and all Huon Ridge data. None should be added to Goal 002 to
+rescue the failed gate.
+
+**Recommendation:** stop this model version at the informative failure.
+Goal 003 planning should begin with a PI-level model-repair decision. A
+revised, newly frozen study may test misspecification, sampling intensity and
+comparators. If the priority is the non-clean membership/low-rate geometry,
+consider the already specified exact unseen-richness enumeration with checked
+Gauss--Hermite integration under a new design, new oracles and explicit PI
+approval. Do not proceed directly to empirical analysis.
