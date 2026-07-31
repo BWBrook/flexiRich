@@ -221,12 +221,24 @@ The acceptance-gate render created
 `outputs/goal002/report/goal002_baseline_recovery.html` at 91,694 bytes.
 Because an earlier render had populated the out-of-project support directory,
 Quarto emitted a cleanup warning while still exiting zero. The focused final
-review removed that generated directory and rendered once more. The final
-render exited zero without a warning in 7.19 seconds and produced 91,821 bytes
-with SHA-256
-`a17805743cfb42a205a79e8fe28f2fb8af509abd323104dd780d7df7c9c3dad4`.
+review removed that generated directory and rendered once more.
+
+Independent review then identified sequential `dplyr::summarise()` name
+masking in the six-cell display: the logical clean-fit vector had been
+overwritten by a scalar count before later statistics indexed it. The focused
+repair retained the logical vector, used distinct `clean_n` and `nonclean_n`
+outputs, and added a base-index reconstruction of every displayed statistic
+for all six cells. The reconstruction matched the grouped result exactly and
+confirmed cell 1 at 9/10 clean and 1 non-clean, plus the four-year,
+true-richness-8 posterior mean median 8.843630, range 7.333324--10.634249 and
+median interval width 5.5. No frozen evidence, criterion, threshold,
+denominator or scientific conclusion changed.
+
+The repaired canonical render exited zero without a warning in 7.92 seconds
+and produced 91,829 bytes with SHA-256
+`5531fe9e1f1dcf69035fc438b7f5004bc6e04c31621a5870d0d8779f57b9fa4b`.
 The tracked report source SHA-256 is
-`5ba7217f2cbc85e199219e32d589cf81d2ee6edd162fbd2b76e076540ea76036`.
+`7e20970f8d6848ee5f27b7c0cda0e6fd192124eba7562f4b2aafa66f91bdf4b4`.
 Quarto's generated `analysis/.gitignore` was removed after rendering and is
 not part of the acceptance record.
 

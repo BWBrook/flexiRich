@@ -175,30 +175,107 @@ primary_cell <- primary |>
     run_type, profile_id, cell_id, true_richness, n_occasions, duration
   ) |>
   dplyr::summarise(
-    planned = dplyr::n(),
-    clean = sum(clean),
-    nonclean = sum(!clean),
-    rescues = sum(rescue_used),
-    observed_median = stats::median(observed_richness),
-    observed_range = format_range(observed_richness, 0L),
+    planned_n = dplyr::n(),
+    clean_n = sum(.data$clean),
+    nonclean_n = sum(!.data$clean),
+    rescues_n = sum(.data$rescue_used),
+    observed_median = stats::median(.data$observed_richness),
+    observed_range = format_range(.data$observed_richness, 0L),
     posterior_mean_median = stats::median(
-      posterior_mean[clean],
+      .data$posterior_mean[.data$clean],
       na.rm = TRUE
     ),
-    posterior_mean_range = format_range(posterior_mean[clean], 2L),
-    coverage_90 = sum(covered_90),
-    median_absolute_error = stats::median(absolute_error),
+    posterior_mean_range = format_range(
+      .data$posterior_mean[.data$clean],
+      2L
+    ),
+    coverage_90 = sum(.data$covered_90),
+    median_absolute_error = stats::median(.data$absolute_error),
     raw_median_absolute_error = stats::median(
-      abs(observed_richness - true_richness)
+      abs(.data$observed_richness - .data$true_richness)
     ),
     median_interval_width = stats::median(
-      interval_width[clean],
+      .data$interval_width[.data$clean],
       na.rm = TRUE
     ),
-    median_rps = stats::median(rps),
-    median_baseline_rps = stats::median(baseline_rps),
+    median_rps = stats::median(.data$rps),
+    median_baseline_rps = stats::median(.data$baseline_rps),
     .groups = "drop"
   )
+
+# Independently reconstruct every displayed primary-cell statistic using base
+# indexing. This guards against dplyr's sequential summarise name masking.
+primary_cell_direct <- dplyr::bind_rows(lapply(
+  split(primary, primary$cell_id),
+  function(cell) {
+    keep <- cell$terminal_status != "final_nonclean"
+    tibble::tibble(
+      run_type = unique(cell$run_type),
+      profile_id = unique(cell$profile_id),
+      cell_id = unique(cell$cell_id),
+      true_richness = unique(cell$true_richness),
+      n_occasions = unique(cell$n_occasions),
+      duration = unique(cell$duration),
+      planned_n = nrow(cell),
+      clean_n = sum(keep),
+      nonclean_n = sum(!keep),
+      rescues_n = sum(cell$rescue_used),
+      observed_median = stats::median(cell$observed_richness),
+      observed_range = format_range(cell$observed_richness, 0L),
+      posterior_mean_median = stats::median(
+        cell$posterior_mean[keep],
+        na.rm = TRUE
+      ),
+      posterior_mean_range = format_range(
+        cell$posterior_mean[keep],
+        2L
+      ),
+      coverage_90 = sum(cell$covered_90),
+      median_absolute_error = stats::median(cell$absolute_error),
+      raw_median_absolute_error = stats::median(
+        abs(cell$observed_richness - cell$true_richness)
+      ),
+      median_interval_width = stats::median(
+        cell$interval_width[keep],
+        na.rm = TRUE
+      ),
+      median_rps = stats::median(cell$rps),
+      median_baseline_rps = stats::median(cell$baseline_rps)
+    )
+  }
+))
+
+primary_cell_check <- primary_cell |>
+  dplyr::arrange(cell_id) |>
+  as.data.frame()
+primary_cell_direct_check <- primary_cell_direct |>
+  dplyr::arrange(cell_id) |>
+  as.data.frame()
+row.names(primary_cell_check) <- NULL
+row.names(primary_cell_direct_check) <- NULL
+
+cell_1_check <- primary_cell_direct |>
+  dplyr::filter(cell_id == 1L)
+cell_4_source <- primary |>
+  dplyr::filter(cell_id == 4L)
+cell_4_keep <- cell_4_source$terminal_status != "final_nonclean"
+
+stopifnot(
+  identical(primary_cell_check, primary_cell_direct_check),
+  nrow(primary_cell_direct) == 6L,
+  identical(cell_1_check$clean_n, 9L),
+  identical(cell_1_check$nonclean_n, 1L),
+  abs(
+    stats::median(cell_4_source$posterior_mean[cell_4_keep]) -
+      8.843630
+  ) < 1e-6,
+  abs(min(cell_4_source$posterior_mean[cell_4_keep]) - 7.333324) < 1e-6,
+  abs(max(cell_4_source$posterior_mean[cell_4_keep]) - 10.634249) < 1e-6,
+  identical(
+    stats::median(cell_4_source$interval_width[cell_4_keep]),
+    5.5
+  )
+)
 
 status_by_cell <- results |>
   dplyr::mutate(
@@ -553,7 +630,7 @@ summaries do not replace it.
 four_year_table <- primary_cell |>
   dplyr::filter(n_occasions == 208L) |>
   dplyr::mutate(
-    `Clean/planned` = format_count(clean, planned),
+    `Clean/planned` = format_count(clean_n, planned_n),
     `Observed median (range)` = paste0(
       formatC(observed_median, format = "f", digits = 1L),
       " (", observed_range, ")"
@@ -562,7 +639,7 @@ four_year_table <- primary_cell |>
       formatC(posterior_mean_median, format = "f", digits = 2L),
       " (", posterior_mean_range, ")"
     ),
-    `90% coverage` = format_count(coverage_90, planned)
+    `90% coverage` = format_count(coverage_90, planned_n)
   ) |>
   dplyr::select(
     `Run type` = run_type,
@@ -572,7 +649,7 @@ four_year_table <- primary_cell |>
     `Observed median (range)`,
     `Posterior mean median (range)`,
     `Clean/planned`,
-    `Rescues` = rescues,
+    `Rescues` = rescues_n,
     `90% coverage`,
     `Median posterior abs. error` = median_absolute_error,
     `Median observed abs. error` = raw_median_absolute_error,
@@ -606,7 +683,7 @@ interval width.
 six_month_table <- primary_cell |>
   dplyr::filter(n_occasions == 26L) |>
   dplyr::mutate(
-    `Clean/planned` = format_count(clean, planned),
+    `Clean/planned` = format_count(clean_n, planned_n),
     `Observed median (range)` = paste0(
       formatC(observed_median, format = "f", digits = 1L),
       " (", observed_range, ")"
@@ -615,7 +692,7 @@ six_month_table <- primary_cell |>
       formatC(posterior_mean_median, format = "f", digits = 2L),
       " (", posterior_mean_range, ")"
     ),
-    `90% coverage` = format_count(coverage_90, planned)
+    `90% coverage` = format_count(coverage_90, planned_n)
   ) |>
   dplyr::select(
     `Run type` = run_type,
@@ -625,8 +702,8 @@ six_month_table <- primary_cell |>
     `Observed median (range)`,
     `Posterior mean median (range)`,
     `Clean/planned`,
-    `Final non-clean` = nonclean,
-    `Rescues` = rescues,
+    `Final non-clean` = nonclean_n,
+    `Rescues` = rescues_n,
     `90% coverage`,
     `Median frozen abs. error` = median_absolute_error,
     `Median observed abs. error` = raw_median_absolute_error,
