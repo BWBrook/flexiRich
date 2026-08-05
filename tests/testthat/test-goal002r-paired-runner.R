@@ -164,6 +164,21 @@ testthat::test_that("baseline path delegates its single rescue to Goal 002", {
   testthat::expect_identical(result$terminal_fit$draws, matrix(1, 4L, 1L))
 })
 
+testthat::test_that("Goal 002 baseline fits accept the Goal 002R evidence root", {
+  output_dir <- file.path(
+    goal002r_project_root(),
+    "outputs",
+    "goal002r",
+    "paired-comparison",
+    paste0("test-baseline-", Sys.getpid())
+  )
+
+  testthat::expect_identical(
+    .goal002_output_directory(output_dir),
+    normalizePath(output_dir, mustWork = FALSE)
+  )
+})
+
 testthat::test_that("case results expose paired data and geometry evidence", {
   prepared <- goal002r_prepare_paired_case(
     goal002r_paired_cases()[1L, , drop = FALSE]

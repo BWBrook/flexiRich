@@ -155,9 +155,23 @@
 .goal002_output_directory <- function(output_dir) {
   .goal002_assert_text(output_dir, "output_dir")
   project_root <- .goal002_project_root()
-  boundary <- file.path(project_root, "outputs", "goal002")
-  dir.create(boundary, recursive = TRUE, showWarnings = FALSE)
-  boundary <- normalizePath(boundary, mustWork = TRUE)
+  boundaries <- file.path(
+    project_root,
+    "outputs",
+    c("goal002", "goal002r")
+  )
+  invisible(lapply(
+    boundaries,
+    dir.create,
+    recursive = TRUE,
+    showWarnings = FALSE
+  ))
+  boundaries <- vapply(
+    boundaries,
+    normalizePath,
+    character(1),
+    mustWork = TRUE
+  )
 
   absolute <- if (startsWith(output_dir, "/")) {
     normalizePath(output_dir, mustWork = FALSE)
@@ -167,13 +181,16 @@
       mustWork = FALSE
     )
   }
-  inside_boundary <- startsWith(
+  inside_boundary <- any(startsWith(
     absolute,
-    paste0(boundary, .Platform$file.sep)
-  )
+    paste0(boundaries, .Platform$file.sep)
+  ))
   if (!inside_boundary) {
     .stop_invalid_goal002_fit(
-      "output_dir must be a descendant of outputs/goal002."
+      paste0(
+        "output_dir must be a descendant of outputs/goal002 ",
+        "or outputs/goal002r."
+      )
     )
   }
   if (file.exists(absolute) || dir.exists(absolute)) {
