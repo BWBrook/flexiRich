@@ -58,8 +58,9 @@ Rscript scripts/run_goal002r_recovery.R
 Rscript scripts/run_goal002r_grid.R
 ```
 
-The active contract and deliberate non-goals are recorded in
-`docs/goals/002r-collapsed-unseen-richness/ActiveContract.md`. This is a
-prototype validation surface, not an empirical Judbury or Huon Ridge fit.
+The active scientific objective and bounded paired-comparison plan are recorded
+in [Goal.md](docs/goals/002r-collapsed-unseen-richness/Goal.md) and
+[Plan.md](docs/goals/002r-collapsed-unseen-richness/Plan.md). This is a prototype
+validation surface, not an empirical Judbury or Huon Ridge fit.
 Production fitting defaults to quadrature order 128 and rejects arbitrary
 orders; each CmdStan fit also stops on failed sampler-health diagnostics.
