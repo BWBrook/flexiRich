@@ -53,4 +53,13 @@ testthat::test_that("fit health checks enforce posterior richness invariants", {
   testthat::expect_true(fit$health$passed)
   testthat::expect_equal(fit$health$metrics$divergences, 0)
   testthat::expect_equal(fit$health$metrics$treedepth_hits, 0)
+  testthat::expect_identical(
+    fit$health$variables,
+    c(
+      "omega", "mu_alpha", "sigma_alpha", "sigma_camera",
+      sprintf("alpha[%d]", seq_along(fit$data$detected_ids)),
+      sprintf("camera_effect[%d]", seq_along(fit$data$camera_ids)),
+      "q_unseen", "expected_richness"
+    )
+  )
 })

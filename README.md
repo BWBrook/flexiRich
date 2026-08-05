@@ -56,7 +56,13 @@ Rscript scripts/run_goal002r_smoke.R
 Rscript scripts/check_goal002r_numerics.R
 Rscript scripts/run_goal002r_recovery.R
 Rscript scripts/run_goal002r_grid.R
+Rscript scripts/run_goal002r_paired_comparison.R
 ```
+
+The paired-comparison command runs the prespecified six-case Goal 002 versus
+Goal 002R experiment and writes only its fit directories and six evidence
+files. It refuses to mix a new run into a non-empty paired-comparison output
+directory.
 
 The active scientific objective and bounded paired-comparison plan are recorded
 in [Goal.md](docs/goals/002r-collapsed-unseen-richness/Goal.md) and

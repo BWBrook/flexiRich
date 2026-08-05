@@ -178,6 +178,8 @@ goal002r_sampler_health <- function(
   diagnostic <- fit$backend$diagnostic_summary()
   variables <- c(
     "omega", "mu_alpha", "sigma_alpha", "sigma_camera",
+    sprintf("alpha[%d]", seq_along(fit$data$detected_ids)),
+    sprintf("camera_effect[%d]", seq_along(fit$data$camera_ids)),
     "q_unseen", "expected_richness"
   )
   summary <- fit$backend$summary(variables)
@@ -218,6 +220,7 @@ goal002r_sampler_health <- function(
   list(
     passed = isTRUE(passed),
     message = message,
+    variables = variables,
     thresholds = thresholds,
     metrics = as.list(metrics)
   )
