@@ -1,9 +1,11 @@
 # External consultation: what should follow the Goal 002R collapsed-likelihood experiment?
 
 **Project:** FlexiRich-G, a finite-known-pool estimator of camera-detectable
-species richness  
+species richness
+
 **Consultation status:** No decision requested on empirical application; we
-are deciding whether a computational repair is worth further development  
+are deciding whether a computational repair is worth further development
+
 **Date:** 6 August 2026
 
 ## The advice we need
