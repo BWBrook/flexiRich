@@ -1,0 +1,7 @@
+"case_id","baseline_primary_seconds","collapsed_primary_seconds","collapsed_to_baseline_runtime_ratio","baseline_primary_clean","collapsed_primary_clean","baseline_terminal_clean","collapsed_terminal_clean","baseline_rescue_used","collapsed_rescue_used"
+"small-easy",0.852,4.409,5.17488262910798,FALSE,FALSE,TRUE,TRUE,TRUE,TRUE
+"small-unseen",0.691999999999997,2.761,3.9898843930636,FALSE,FALSE,TRUE,TRUE,TRUE,TRUE
+"standard-short-low",3.154,8.726,2.76664552948637,FALSE,FALSE,TRUE,TRUE,TRUE,TRUE
+"standard-short-high",3.78399999999999,10.962,2.89693446088796,TRUE,TRUE,TRUE,TRUE,FALSE,FALSE
+"standard-long-medium",15.137,53.983,3.56629451014071,FALSE,FALSE,TRUE,TRUE,TRUE,TRUE
+"historical-hard",20.87,66.6220000000001,3.19223766171539,FALSE,TRUE,FALSE,TRUE,TRUE,FALSE

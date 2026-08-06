@@ -1,0 +1,6 @@
+"case_id","support_valid","total_variation","baseline_mean","collapsed_mean","absolute_mean_difference","baseline_median","collapsed_median","absolute_median_difference","baseline_lower_90","collapsed_lower_90","absolute_lower_90_difference","baseline_upper_90","collapsed_upper_90","absolute_upper_90_difference","passed"
+"small-easy",TRUE,0.0255986977662562,5.07798239076751,5.148840790516,0.0708583997484942,5,5,0,4,4,0,8,8,0,TRUE
+"small-unseen",TRUE,0.00478384955866201,5.31594346030407,5.29813946368894,0.0178039966151351,5,5,0,2,2,0,8,8,0,TRUE
+"standard-short-low",TRUE,0.0192036834948196,9.73031791001501,10.0169138378387,0.286595927823718,7,7,0,1,1,0,26,27,1,FALSE
+"standard-short-high",TRUE,0.016447334127479,22.3095596655624,22.2155634397085,0.093996225853946,22,22,0,16,16,0,29,29,0,TRUE
+"standard-long-medium",TRUE,0.0102946333010583,23.7269380731242,23.6956176057837,0.0313204673404641,23,23,0,19,19,0,29,29,0,TRUE

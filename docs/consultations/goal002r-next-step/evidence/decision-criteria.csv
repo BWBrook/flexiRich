@@ -1,0 +1,11 @@
+"criterion","observed","requirement","passed"
+"all_cases_supported",6,"= 6",TRUE
+"quadrature_checks",141,"= 150",FALSE
+"richness_support",5,"= 5",TRUE
+"pmf_fidelity",4,"= 5",FALSE
+"shared_parameter_fidelity",53,"all shared parameters in every paired-clean case",TRUE
+"collapsed_terminal_clean",6,"= 6",TRUE
+"historical_stress_clean",1,"= 1",TRUE
+"primary_geometry_not_worse",1,">= 0",TRUE
+"terminal_geometry_not_worse",1,">= 0",TRUE
+"runtime_acceptable",3.37926608592805,"<= 2",FALSE
