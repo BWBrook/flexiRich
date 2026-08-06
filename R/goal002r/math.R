@@ -39,20 +39,48 @@ goal002r_gauss_hermite_rule <- function(order) {
   )
 }
 
-goal002r_log_m0 <- function(
-  zero_history,
-  mu_alpha,
-  sigma_alpha,
-  camera_effect,
-  rule = goal002r_gauss_hermite_rule(
-    goal002r_contract()$quadrature_default
-  )
-) {
+goal002r_zero_exposure <- function(zero_history, camera_ids) {
   required <- c("camera_id", "active_days", "n_trials")
   if (!tibble::is_tibble(zero_history) ||
       !identical(names(zero_history), required) ||
-      nrow(zero_history) == 0L) {
-    if (nrow(zero_history) == 0L) return(0)
+      !is.character(camera_ids) || length(camera_ids) == 0L ||
+      anyNA(camera_ids) || any(!nzchar(camera_ids)) ||
+      anyDuplicated(camera_ids) ||
+      any(!zero_history$camera_id %in% camera_ids) ||
+      any(zero_history$active_days < 1L) ||
+      any(zero_history$n_trials < 1L)) {
+    .goal002r_stop("Zero-history exposure inputs have an invalid contract.")
+  }
+  exposure <- stats::setNames(rep(0, length(camera_ids)), camera_ids)
+  if (nrow(zero_history) > 0L) {
+    totals <- tapply(
+      zero_history$active_days * zero_history$n_trials,
+      zero_history$camera_id,
+      sum
+    )
+    exposure[names(totals)] <- as.numeric(totals)
+  }
+  exposure
+}
+
+.goal002r_log_adjusted_exposure <- function(zero_history, camera_effect) {
+  exposure <- goal002r_zero_exposure(zero_history, names(camera_effect))
+  positive <- exposure > 0
+  if (!any(positive)) return(-Inf)
+  terms <- log(exposure[positive]) + camera_effect[names(exposure)[positive]]
+  anchor <- max(terms)
+  as.numeric(anchor + log(sum(exp(terms - anchor))))
+}
+
+.goal002r_validate_m0_inputs <- function(
+  zero_history,
+  mu_alpha,
+  sigma_alpha,
+  camera_effect
+) {
+  required <- c("camera_id", "active_days", "n_trials")
+  if (!tibble::is_tibble(zero_history) ||
+      !identical(names(zero_history), required)) {
     .goal002r_stop("zero_history has an invalid contract.")
   }
   mu_alpha <- .goal002r_scalar(mu_alpha, "mu_alpha")
@@ -64,22 +92,112 @@ goal002r_log_m0 <- function(
   if (any(!zero_history$camera_id %in% names(camera_effect))) {
     .goal002r_stop("zero_history contains an unknown camera.")
   }
-  camera <- unname(camera_effect[zero_history$camera_id])
-  integrated_log_likelihood <- function(alpha) {
-    log_rate <- alpha + camera
-    sum(zero_history$n_trials *
-      log_nondetect_probability(log_rate, zero_history$active_days))
-  }
-  if (sigma_alpha == 0 || nrow(rule) == 1L) {
-    return(integrated_log_likelihood(mu_alpha))
-  }
-  log_values <- vapply(
-    seq_len(nrow(rule)),
-    function(i) integrated_log_likelihood(mu_alpha + sigma_alpha * rule$node[i]),
-    numeric(1)
+  list(
+    zero_history = zero_history,
+    mu_alpha = mu_alpha,
+    sigma_alpha = sigma_alpha,
+    camera_effect = camera_effect
   )
-  anchor <- max(log_values)
-  anchor + log(sum(rule$weight * exp(log_values - anchor)))
+}
+
+.goal002r_log_sum_exp <- function(values) {
+  anchor <- max(values)
+  if (!is.finite(anchor)) return(anchor)
+  as.numeric(anchor + log(sum(exp(values - anchor))))
+}
+
+goal002r_log_m0_fixed <- function(
+  zero_history,
+  mu_alpha,
+  sigma_alpha,
+  camera_effect,
+  rule = goal002r_gauss_hermite_rule(
+    goal002r_contract()$quadrature_default
+  )
+) {
+  input <- .goal002r_validate_m0_inputs(
+    zero_history,
+    mu_alpha,
+    sigma_alpha,
+    camera_effect
+  )
+  if (nrow(input$zero_history) == 0L) return(0)
+  log_A <- .goal002r_log_adjusted_exposure(
+    input$zero_history,
+    input$camera_effect
+  )
+  log_B <- input$mu_alpha + log_A
+  if (input$sigma_alpha == 0 || nrow(rule) == 1L) {
+    return(-exp(log_B))
+  }
+  log_values <- -exp(log_B + input$sigma_alpha * rule$node)
+  .goal002r_log_sum_exp(log(rule$weight) + log_values)
+}
+
+.goal002r_lambert_w0_from_log <- function(log_x) {
+  if (identical(log_x, -Inf) ||
+      log_x < log(.Machine$double.xmin)) {
+    return(0)
+  }
+  upper <- if (log_x <= 0) exp(log_x) else log_x + 1
+  stats::uniroot(
+    function(w) w + log(w) - log_x,
+    interval = c(.Machine$double.xmin, upper),
+    tol = 1e-14
+  )$root
+}
+
+goal002r_log_m0_adaptive <- function(
+  zero_history,
+  mu_alpha,
+  sigma_alpha,
+  camera_effect,
+  rule = goal002r_gauss_hermite_rule(
+    goal002r_contract()$quadrature_default
+  )
+) {
+  input <- .goal002r_validate_m0_inputs(
+    zero_history,
+    mu_alpha,
+    sigma_alpha,
+    camera_effect
+  )
+  if (nrow(input$zero_history) == 0L) return(0)
+  log_A <- .goal002r_log_adjusted_exposure(
+    input$zero_history,
+    input$camera_effect
+  )
+  log_B <- input$mu_alpha + log_A
+  if (input$sigma_alpha == 0 || nrow(rule) == 1L) {
+    return(-exp(log_B))
+  }
+  w <- .goal002r_lambert_w0_from_log(
+    log_B + 2 * log(input$sigma_alpha)
+  )
+  mode <- -w / input$sigma_alpha
+  scale <- 1 / sqrt(1 + w)
+  node <- mode + scale * rule$node
+  log_values <- log(rule$weight) + log(scale) - 0.5 * node^2 -
+    exp(log_B + input$sigma_alpha * node) + 0.5 * rule$node^2
+  .goal002r_log_sum_exp(log_values)
+}
+
+goal002r_log_m0 <- function(
+  zero_history,
+  mu_alpha,
+  sigma_alpha,
+  camera_effect,
+  rule = goal002r_gauss_hermite_rule(
+    goal002r_contract()$quadrature_default
+  )
+) {
+  goal002r_log_m0_adaptive(
+    zero_history,
+    mu_alpha,
+    sigma_alpha,
+    camera_effect,
+    rule
+  )
 }
 
 goal002r_q_unseen <- function(omega, log_m0) {

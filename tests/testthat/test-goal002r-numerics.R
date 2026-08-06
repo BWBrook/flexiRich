@@ -14,6 +14,95 @@ testthat::test_that("Gauss--Hermite rules have standard-normal moments", {
   )
 })
 
+testthat::test_that("zero-history exposure reduces exactly by camera", {
+  fixture <- goal002_oracle_fixture(C = 4L)
+  collapsed <- prepare_flexirich_g_collapsed_data(fixture$data)
+
+  exposure <- goal002r_zero_exposure(
+    collapsed$zero_history,
+    collapsed$camera_ids
+  )
+
+  testthat::expect_identical(exposure, c(cam_01 = 4, cam_02 = 13))
+})
+
+testthat::test_that("fixed quadrature preserves the row-wise zero likelihood", {
+  fixture <- goal002_oracle_fixture(C = 4L)
+  collapsed <- prepare_flexirich_g_collapsed_data(fixture$data)
+  rule <- goal002r_gauss_hermite_rule(128L)
+  mu <- log(0.001)
+  camera_effect <- c(cam_01 = -0.2, cam_02 = 0.2)
+  rowwise <- function(sigma) {
+    log_values <- vapply(rule$node, function(node) {
+      camera <- camera_effect[collapsed$zero_history$camera_id]
+      -sum(
+        collapsed$zero_history$n_trials *
+          collapsed$zero_history$active_days *
+          exp(mu + sigma * node + camera)
+      )
+    }, numeric(1))
+    anchor <- max(log_values)
+    anchor + log(sum(rule$weight * exp(log_values - anchor)))
+  }
+
+  for (sigma in c(0, 0.4, 1.1, 2.0)) {
+    reduced <- goal002r_log_m0_fixed(
+      collapsed$zero_history,
+      mu_alpha = mu,
+      sigma_alpha = sigma,
+      camera_effect = camera_effect,
+      rule = rule
+    )
+    testthat::expect_equal(reduced, rowwise(sigma), tolerance = 1e-12)
+  }
+})
+
+testthat::test_that("adaptive quadrature follows the independent oracle", {
+  fixture <- goal002_oracle_fixture(C = 4L)
+  collapsed <- prepare_flexirich_g_collapsed_data(fixture$data)
+  camera_effect <- c(cam_01 = -0.35, cam_02 = 0.35)
+  cases <- tibble::tribble(
+    ~mu_alpha, ~sigma_alpha,
+    log(0.001), 1.1,
+    log(0.04),  2.4
+  )
+
+  for (index in seq_len(nrow(cases))) {
+    reference <- goal002r_reference_log_m0(
+      collapsed$zero_history,
+      cases$mu_alpha[index],
+      cases$sigma_alpha[index],
+      camera_effect
+    )$log_m0
+    adaptive_64 <- goal002r_log_m0_adaptive(
+      collapsed$zero_history,
+      cases$mu_alpha[index],
+      cases$sigma_alpha[index],
+      camera_effect,
+      rule = goal002r_gauss_hermite_rule(64L)
+    )
+    fixed_64 <- goal002r_log_m0_fixed(
+      collapsed$zero_history,
+      cases$mu_alpha[index],
+      cases$sigma_alpha[index],
+      camera_effect,
+      rule = goal002r_gauss_hermite_rule(64L)
+    )
+    adaptive_128 <- goal002r_log_m0_adaptive(
+      collapsed$zero_history,
+      cases$mu_alpha[index],
+      cases$sigma_alpha[index],
+      camera_effect,
+      rule = goal002r_gauss_hermite_rule(128L)
+    )
+    testthat::expect_lt(
+      abs(adaptive_64 - reference),
+      abs(fixed_64 - reference)
+    )
+    testthat::expect_equal(adaptive_128, reference, tolerance = 1e-8)
+  }
+})
+
 testthat::test_that("all-zero encounter integral matches the deterministic limit", {
   fixture <- goal002_oracle_fixture(C = 4L)
   collapsed <- prepare_flexirich_g_collapsed_data(fixture$data)
