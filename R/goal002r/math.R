@@ -191,7 +191,7 @@ goal002r_log_m0 <- function(
     goal002r_contract()$quadrature_default
   )
 ) {
-  goal002r_log_m0_adaptive(
+  goal002r_log_m0_fixed(
     zero_history,
     mu_alpha,
     sigma_alpha,

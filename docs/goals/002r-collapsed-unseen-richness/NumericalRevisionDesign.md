@@ -1,6 +1,6 @@
 # Goal 002R Numerical Revision Design
 
-Status: approved design; implementation pending
+Status: stopped at numerical screen; no candidate passed
 Date: 2026-08-06
 
 ## Purpose
@@ -140,3 +140,18 @@ the revised results are visible.
 Stop after the revised decision and return it for PI assessment. Broader
 synthetic calibration, comparator benchmarking and Judbury analysis remain out
 of scope.
+
+## Numerical-screen outcome
+
+The prespecified screen completed on 2026-08-06:
+
+| Method | Order | Checks passed | Maximum absolute error |
+|---|---:|---:|---:|
+| Adaptive | 16 | 224/750 | 0.00779 |
+| Adaptive | 32 | 542/750 | 0.000636 |
+| Adaptive | 64 | 711/750 | 0.0000392 |
+| Fixed | 256 | 743/750 | 0.00000180 |
+
+No candidate met the requirement that all 750 errors be at most \(10^{-8}\).
+The stopping rule therefore rejected this bounded numerical revision before
+the Stan model or paired-comparison computation was changed.
