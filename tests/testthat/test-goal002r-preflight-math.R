@@ -14,6 +14,16 @@ testthat::test_that("decision-scale preflight contract is frozen", {
   testthat::expect_identical(contract$gradient_max_gate, 1e-2)
   testthat::expect_identical(contract$gradient_rms_gate, 1e-3)
   testthat::expect_identical(contract$selection_headroom, 0.5)
+  testthat::expect_identical(contract$mode_initial_bound, 1)
+  testthat::expect_identical(contract$mode_max_expansions, 64L)
+  testthat::expect_identical(contract$tail_initial_scales, 8)
+  testthat::expect_identical(contract$tail_max_expansions, 20L)
+  testthat::expect_identical(contract$tail_relative_bound, 1e-14)
+  testthat::expect_identical(contract$tail_stability, 1e-9)
+  testthat::expect_identical(contract$richardson_max_halvings, 8L)
+  testthat::expect_identical(contract$richardson_convergence, 2.5e-6)
+  testthat::expect_identical(contract$reference_relative_slope, 1e-10)
+  testthat::expect_identical(contract$reference_scaled_uncertainty, 1e-4)
 })
 
 testthat::test_that("high-order rules retain finite log weights and moments", {
@@ -194,15 +204,110 @@ testthat::test_that("adaptive reference remains anchored near zero sigma", {
   testthat::expect_true(all(is.finite(result)))
 })
 
-testthat::test_that("reference derivatives pass finite differences", {
+testthat::test_that("whole-line oracle matches frozen difficult states", {
+  sentinel <- goal002r_preflight_reference_pair(10, 5.5 / 60)
+  testthat::expect_equal(
+    sentinel[c("log_m0", "derivative_a", "derivative_sigma")],
+    c(
+      log_m0 = -1351.413795,
+      derivative_a = -460.412146,
+      derivative_sigma = 19422.772652
+    ),
+    tolerance = 5e-6
+  )
+  half_kernel <- goal002r_preflight_reference_pair(10, 0.55)
+  testthat::expect_true(all(is.finite(half_kernel)))
+  for (result in list(sentinel, half_kernel)) {
+    testthat::expect_lte(result[["value_agreement"]], 1e-8)
+    testthat::expect_true(result[["derivative_a_mixed_pass"]] == 1)
+    testthat::expect_true(result[["derivative_sigma_mixed_pass"]] == 1)
+    testthat::expect_true(result[["scaled_reference_a_pass"]] == 1)
+    testthat::expect_true(result[["scaled_reference_sigma_pass"]] == 1)
+    testthat::expect_lte(
+      result[["maximum_tail_relative_bound"]],
+      1e-14
+    )
+    testthat::expect_lte(result[["maximum_expansion_change"]], 1e-9)
+  }
+
+  zero <- goal002r_preflight_reference_pair(10, 0)
+  testthat::expect_equal(
+    zero[c("log_m0", "derivative_a", "derivative_sigma")],
+    c(log_m0 = -exp(10), derivative_a = -exp(10), derivative_sigma = 0),
+    tolerance = 0
+  )
+})
+
+testthat::test_that("reference derivatives pass repaired diagnostics", {
   states <- tibble::tribble(
     ~a, ~sigma_alpha,
     -8, 5.5,
      0, 2.75,
-    10, 5.5
+    10, 5.5,
+    10, 0,
+    10.0, 5.5 / 60,
+     9.7, 5.5 / 60,
+     9.4, 5.5 / 60,
+     9.1, 5.5 / 60,
+     8.8, 5.5 / 60
   )
-  checks <- goal002r_preflight_finite_difference_checks(states)
-  testthat::expect_identical(nrow(checks), 6L)
+  checks <- goal002r_preflight_derivative_checks(states)
+  testthat::expect_identical(nrow(checks), 18L)
+  testthat::expect_true(all(c(
+    "observed", "threshold", "refinements", "converged", "passed"
+  ) %in% names(checks)))
   testthat::expect_true(all(checks$passed))
   testthat::expect_lte(max(checks$absolute_error), 1e-5)
+  boundary <- checks[
+    checks$a == 10 & checks$sigma_alpha == 0 &
+      checks$parameter == "sigma_alpha",
+  ]
+  testthat::expect_identical(boundary$method, "exact_evenness")
+  testthat::expect_identical(boundary$analytic, 0)
+  testthat::expect_lte(boundary$observed, 1e-12)
+  positive <- checks[checks$sigma_alpha > 0, ]
+  testthat::expect_true(all(positive$method == "richardson"))
+  testthat::expect_true(all(positive$refinements <= 8L))
+  testthat::expect_true(all(positive$converged))
+})
+
+testthat::test_that("narrow oracle intervals force certified expansion", {
+  default <- .goal002r_preflight_reference_core(10, 5.5 / 60, 1e-12)
+  narrow <- .goal002r_preflight_reference_core(
+    10,
+    5.5 / 60,
+    1e-12,
+    initial_scales = 2
+  )
+  testthat::expect_gt(attr(narrow, "tail_expansions"), 1L)
+  testthat::expect_lte(attr(narrow, "tail_relative_bound"), 1e-14)
+  testthat::expect_equal(
+    as.numeric(narrow),
+    as.numeric(default),
+    tolerance = 1e-9
+  )
+})
+
+testthat::test_that("reference precheck freezes states and criteria", {
+  states <- .goal002r_preflight_reference_states()
+  testthat::expect_identical(nrow(states), 3726L)
+  testthat::expect_true(all(c(1e-2, 1e-3, 1e-4, 1e-5, 1e-6) %in%
+    states$sigma_alpha[states$a == 10]))
+  testthat::expect_identical(nrow(dplyr::distinct(states)), 3726L)
+
+  pair <- goal002r_preflight_reference_pair(10, 0.55)
+  passing <- .goal002r_preflight_reference_precheck_row(10, 0.55, pair)
+  testthat::expect_identical(passing$passed, TRUE)
+  failing_pair <- pair
+  failing_pair[["value_agreement"]] <- 1.1e-8
+  failing <- .goal002r_preflight_reference_precheck_row(
+    10,
+    0.55,
+    failing_pair
+  )
+  testthat::expect_identical(failing$passed, FALSE)
+  failure <- .goal002r_preflight_first_reference_failure(failing)
+  testthat::expect_identical(failure$criterion, "delta_value")
+  testthat::expect_identical(failure$observed, 1.1e-8)
+  testthat::expect_identical(failure$threshold, 1e-8)
 })
