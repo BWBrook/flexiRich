@@ -342,6 +342,11 @@ Expected: focused tests pass; no production Goal 002R file changes.
 
 ## Task 2: Implement the independent value-and-gradient oracle
 
+**Amended after load-bearing review:** commit `f21a9ee` followed the original
+brief, but the fixed `[-12,12]` range is not a valid reference on the protected
+domain and the forward quotient at `sigma_alpha == 0` is invalid. Task 3
+remains blocked until this amended task is implemented and reviewed.
+
 **Files:**
 
 - Modify: `R/goal002r/preflight_math.R`
@@ -353,62 +358,99 @@ Expected: focused tests pass; no production Goal 002R file changes.
 - Produces:
   - `goal002r_preflight_reference(a, sigma_alpha, rel_tol) -> named numeric`
   - `goal002r_preflight_reference_pair(a, sigma_alpha) -> named numeric`
-  - `goal002r_preflight_finite_difference_checks(states) -> tibble`
+  - `goal002r_preflight_derivative_checks(states) -> tibble`
 
-- [ ] **Step 1: Write failing strict/loose oracle tests**
+- [ ] **Step 1: Freeze the repaired oracle contract and write failing
+  regressions**
 
-Append:
+Extend `goal002r_preflight_contract()` with exactly:
 
 ```r
-testthat::test_that("adaptive references agree at both locked tolerances", {
-  states <- tibble::tribble(
-    ~a, ~sigma_alpha,
-    -8, 0,
-    -8, 5.5,
-     0, 2.75,
-    10, 0,
-    10, 5.5
-  )
-  for (index in seq_len(nrow(states))) {
-    result <- goal002r_preflight_reference_pair(
-      states$a[index],
-      states$sigma_alpha[index]
-    )
-    testthat::expect_true(all(is.finite(result)))
-    testthat::expect_lte(
-      max(result[c(
-        "value_agreement",
-        "derivative_a_agreement",
-        "derivative_sigma_agreement"
-      )]),
-      1e-8
-    )
-  }
-})
+mode_initial_bound = 1
+mode_max_expansions = 64L
+tail_initial_scales = 8
+tail_max_expansions = 20L
+tail_relative_bound = 1e-14
+tail_stability = 1e-9
 ```
+
+Add regressions for the exact states `(10, 5.5 / 60)`, `(10, 0.55)`, and
+`(10, 0)`. The first must equal
+
+```r
+c(
+  log_m0 = -1351.413795,
+  derivative_a = -460.412146,
+  derivative_sigma = 19422.772652
+)
+```
+
+within `5e-6`. The second must return finite values at both locked tolerances.
+Both non-zero states must have all three strict/loose agreements at most
+`1e-8`, maximum certified relative tail bound at most `1e-14`, and maximum
+post-expansion output change at most `1e-9`. The zero state must equal
+`c(-exp(10), -exp(10), 0)` in the same output order, report the exact sigma
+derivative, and satisfy the evenness check in Step 4.
 
 - [ ] **Step 2: Run the focused test and verify RED**
 
-Run the Task 1 focused command. Expected: missing-reference-function failure.
+Run the Task 1 focused command. Expected: the reviewed fixed-range oracle fails
+at the new regression and stability requirements.
 
-- [ ] **Step 3: Implement anchored adaptive reference integrals**
+- [ ] **Step 3: Implement deterministic mode location and certified tails**
 
-Implement the domain-specific oracle on \([-12,12]\). For each state, define:
+For `t = exp(a + sigma_alpha * z)`, retain the continuous kernels already used
+by the oracle. Their analytic scores are:
 
 ```r
-log_denominator <- function(z) {
-  log_t <- a + sigma_alpha * z
-  stats::dnorm(z, log = TRUE) - exp(log_t)
-}
-log_numerator_a <- function(z) {
-  log_denominator(z) + a + sigma_alpha * z
-}
+score_denominator <- -z - sigma_alpha * t
+score_numerator_a <- -z + sigma_alpha - sigma_alpha * t
+score_sigma_magnitude <- score_numerator_a + 1 / z
 ```
 
-Add a private helper that optimises each log kernel for an anchor and calls
-`stats::integrate()` on the anchored exponential. Integrate the signed
-\(\sigma_\alpha\) numerator as positive and negative magnitudes on `[0, 12]`
-and `[-12, 0]`, then subtract. Return:
+The corresponding curvatures are `-1 - sigma_alpha^2 * t` for the first two
+and that quantity minus `1 / z^2` for each sigma magnitude. They are strictly
+negative, so every whole-line kernel has one mode and each open-half-line
+sigma kernel has one mode.
+
+Bracket each score root without `optimize()`. For a whole-line kernel start at
+`[-1, 1]`; double only an endpoint whose score does not yet have the required
+positive-left/negative-right sign. For the positive sigma kernel use
+`[sqrt(.Machine$double.eps), 1]` and double the right endpoint; for the negative
+kernel use `[-1, -sqrt(.Machine$double.eps)]` and double the magnitude of the
+left endpoint. Use overflow-safe score evaluation. Stop after 64 expansions
+per movable endpoint and error if the signs do not bracket a root. Locate the
+root with `stats::uniroot(tol = 1e-12, maxiter = 100L)` and set
+`local_scale = 1 / sqrt(-curvature(mode))`.
+
+For each primitive integral, transform to
+`y = (z - mode) / local_scale`, subtract the modal log kernel, and split the
+finite transformed interval at `y = 0`. Call `stats::integrate()` separately
+on the two pieces with the requested locked relative tolerance, matching
+absolute tolerance, `subdivisions = 1000L`, and `stop.on.error = TRUE`. This
+mode-centred scaling is mandatory for the positive and negative sigma
+magnitudes: each half has its own mode and scale, so a mode close to `z = 0`
+cannot be hidden at an endpoint of a broad interval.
+
+Start every unbounded endpoint eight local scales from the mode. For a log
+kernel `K`, use strict concavity to certify omitted mass:
+
+```r
+left_bound <- exp(K(L)) / score(L)       # score(L) > 0
+right_bound <- exp(K(R)) / (-score(R))   # score(R) < 0
+```
+
+Evaluate these bounds in log space. Double the mode-to-endpoint distance until
+the sum of applicable bounds is at most `1e-14` of the enclosed integral, with
+at most 20 expansions per unbounded endpoint. After first passage, double
+every unbounded endpoint once more, repeat the integral, and require the
+absolute change in each of `log_m0`, `derivative_a`, and `derivative_sigma` to
+be at most `1e-9`. Any non-finite score, curvature, bound, or integral, or any
+failure to meet the finite expansion limits, is an oracle error.
+
+Combine the separately integrated positive and negative sigma magnitudes with
+signed log arithmetic. Use `expm1()` when their log magnitudes are close; do
+not exponentiate both large ratios and subtract them naively. Return:
 
 ```r
 c(
@@ -420,34 +462,62 @@ c(
 
 Handle `sigma_alpha == 0` with the exact candidate expression. In
 `goal002r_preflight_reference_pair()`, run the oracle at `1e-10` and `1e-12`,
-retain the strict result, and append the three absolute agreements.
+retain the strict result, and append the three absolute agreements, maximum
+certified relative tail bound, maximum post-expansion output change, and the
+maximum number of tail expansions used. The implementation must remain
+independent of the Gauss--Hermite nodes, weights, and candidate sums.
 
-- [ ] **Step 4: Write failing finite-difference tests**
+- [ ] **Step 4: Replace the invalid sigma-boundary quotient**
 
-Append:
+For positive `sigma_alpha`, retain central differences with `h_a = 1e-5` and
+`h_sigma = max(1e-5, sigma_alpha * 1e-5)`. At `sigma_alpha == 0`, do not use a
+forward quotient. The boundary row instead passes only if the analytic sigma
+derivative is exactly zero and a private signed-sigma evaluation satisfies
 
 ```r
-testthat::test_that("reference derivatives pass finite differences", {
-  states <- tibble::tribble(
-    ~a, ~sigma_alpha,
-    -8, 5.5,
-     0, 2.75,
-    10, 5.5
-  )
-  checks <- goal002r_preflight_finite_difference_checks(states)
-  testthat::expect_identical(nrow(checks), 6L)
-  testthat::expect_true(all(checks$passed))
-  testthat::expect_lte(max(checks$absolute_error), 1e-5)
-})
+abs(log_m0(a, 1e-5) - log_m0(a, -1e-5)) <= 1e-12
 ```
 
-- [ ] **Step 5: Implement derivative finite differences**
+The signed evaluation is diagnostic only; the public protected domain remains
+non-negative. Test at least:
 
-Use central differences with `h_a = 1e-5` and
-`h_sigma = max(1e-5, sigma_alpha * 1e-5)`. Use a forward difference when
-`sigma_alpha - h_sigma < 0`. Return one row each for `a` and `sigma_alpha`,
-including `analytic`, `finite_difference`, `absolute_error`, and
-`passed = absolute_error <= 1e-5`.
+```r
+tibble::tribble(
+  ~a, ~sigma_alpha,
+  -8, 5.5,
+   0, 2.75,
+  10, 5.5,
+  10, 0
+)
+```
+
+Return one `a` row and one `sigma_alpha` row per state. Label the boundary
+sigma row `exact_evenness`, rather than `finite_difference`, while retaining a
+common `observed`, `threshold`, and `passed` schema. Positive-sigma derivative
+differences must agree within `1e-5`.
+
+- [ ] **Step 5: Add expansion and exhaustive grid prechecks**
+
+Exercise the private integrator at `(10, 5.5 / 60)` with an intentionally
+narrow two-local-scale initial interval. Require at least one expansion, the
+`1e-14` certified tail bound, and agreement with the default eight-scale result
+within `1e-9` for all three outputs. This is a regression of the frozen
+expansion rule, not permission to tune it during the preflight.
+
+Then evaluate `goal002r_preflight_reference_pair()` at every state from:
+
+```r
+tidyr::crossing(
+  a = seq(-8, 10, length.out = 61L),
+  sigma_alpha = seq(0, 5.5, length.out = 61L)
+)
+```
+
+Require exactly 3,721 completed states, finite returned values, maximum
+strict/loose agreement at most `1e-8`, maximum certified relative tail bound at
+most `1e-14`, and maximum post-expansion change at most `1e-9`. This finite
+oracle precheck must pass and be recorded in the Task 2 report before any Task
+3 code is started.
 
 - [ ] **Step 6: Verify Task 2 and commit**
 
@@ -464,14 +534,21 @@ Rscript -e 'testthat::test_dir(
 git diff --check
 git add R/goal002r/preflight_math.R \
   tests/testthat/test-goal002r-preflight-math.R
-git commit -m "feat: add Goal002R preflight reference oracle"
+git commit -m "fix: repair Goal002R preflight reference oracle"
 ```
 
-Expected: all math tests pass at both reference tolerances.
+Expected: all math tests, the exact regressions, the forced-expansion check,
+and the 3,721-state oracle precheck pass. If any bounded oracle criterion
+fails, stop with an error. Do not try another range, tolerance, or algorithm;
+after the one authorised repair pass is exhausted, record `CLOSE`.
 
 ---
 
 ## Task 3: Implement deterministic audits, maxima search, and selection
+
+**Precondition:** do not start this task until the amended Task 2 regressions,
+forced-expansion check, all-3,721-state oracle precheck, and task-scoped review
+have passed.
 
 **Files:**
 
@@ -578,7 +655,8 @@ testthat::test_that("audit reports both orders and scaled discrepancies", {
   testthat::expect_setequal(unique(audit$order), c(256L, 512L))
   testthat::expect_true(all(c(
     "target_error", "scaled_a_error", "scaled_sigma_error",
-    "scaled_log_sigma_error", "reference_agreement"
+    "scaled_log_sigma_error", "reference_agreement",
+    "tail_relative_bound", "expansion_change"
   ) %in% names(audit)))
   numeric <- audit[vapply(audit, is.numeric, logical(1))]
   testthat::expect_true(all(is.finite(unlist(numeric))))
@@ -625,10 +703,13 @@ reference_agreement <- max(
   derivative_a_agreement,
   derivative_sigma_agreement
 )
+tail_relative_bound <- maximum_tail_relative_bound
+expansion_change <- maximum_expansion_change
 ```
 
 Keep one row per order and state. Any non-finite result stops with a concise
-state identifier.
+state identifier. A tail bound above `1e-14` or expansion change above `1e-9`
+is also an oracle failure, not a candidate discrepancy.
 
 - [ ] **Step 6: Implement bounded maxima search**
 
@@ -666,7 +747,9 @@ rms_gradient <- sqrt(mean(c(
 full_pass <- maximum_target <= 5e-4 &&
   maximum_gradient < 1e-2 &&
   rms_gradient < 1e-3 &&
-  maximum_reference_agreement <= 1e-8
+  maximum_reference_agreement <= 1e-8 &&
+  maximum_tail_relative_bound <= 1e-14 &&
+  maximum_expansion_change <= 1e-9
 headroom_pass <- full_pass &&
   maximum_target <= 2.5e-4 &&
   maximum_gradient <= 5e-3 &&
@@ -680,8 +763,10 @@ otherwise `CLOSE`.
 For the derivative sanity check, combine the four domain corners, the domain
 centre, and the five unique states with the largest per-state maximum across
 all value and gradient discrepancies. Run
-`goal002r_preflight_finite_difference_checks()` on those ten states, yielding
-exactly 20 derivative-check rows.
+`goal002r_preflight_derivative_checks()` on those ten states, yielding exactly
+20 rows. Use central differences only when `sigma_alpha > 0`. Each
+`sigma_alpha == 0` row instead checks the exact zero analytic derivative and
+the `1e-12` evenness identity; it must not contain a forward quotient.
 
 `goal002r_preflight_run()` assembles:
 
@@ -690,7 +775,7 @@ list(
   rule_integrity = dplyr::bind_rows(
     rule_checks,
     goal002r_preflight_algebra_checks(),
-    finite_difference_checks
+    derivative_checks
   ),
   posterior_audit = posterior_audit,
   domain_audit = domain_audit,
@@ -881,7 +966,7 @@ Append a concise `## Preflight result` section to
 - the selected decision;
 - order-level maximum target error, maximum scaled gradient error, RMS
   gradient error, and maximum reference disagreement;
-- rule/algebra/finite-difference status; and
+- rule/algebra/derivative-diagnostic status; and
 - the authorised next step or closure statement.
 
 Set the document status to `completed — SELECT_256`,

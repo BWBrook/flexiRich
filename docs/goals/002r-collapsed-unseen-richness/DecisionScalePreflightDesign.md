@@ -53,8 +53,9 @@ scope.
 1. **Exposure-reduced fixed Gauss--Hermite at orders 256 and 512 -- chosen.**
    It is deterministic, smooth under automatic differentiation, simple to
    audit, and removes the avoidable observation-group loop at every node.
-2. **Adaptive integration in the production target -- oracle only.** R's
-   adaptive integral is retained as an independent reference. Stan's
+2. **State-adaptive whole-line integration -- oracle only.** R's adaptive
+   integral, centred and scaled separately for each continuous kernel, is
+   retained as an independent reference. Stan's
    `integrate_1d` may later be used as a gradient oracle, but not as the next
    production method because its variable work inside HMC is an unresolved
    cost.
@@ -120,8 +121,8 @@ search and later all-draw audit protect against missed interior maxima.
 
 ## Independent reference
 
-For $T=\exp(a+\sigma_\alpha Z)$, the reference calculation uses anchored
-adaptive integration for $m_0$ and the two primitive derivatives
+For $T=\exp(a+\sigma_\alpha Z)$, the reference calculation uses state-adaptive
+whole-line integration for $m_0$ and the two primitive derivatives
 
 \[
 \frac{\partial\log m_0}{\partial a}
@@ -131,11 +132,63 @@ adaptive integration for $m_0$ and the two primitive derivatives
 =-\frac{E[ZT e^{-T}]}{m_0}.
 \]
 
-Reference calculations must be finite and must agree between relative
-tolerances $10^{-10}$ and $10^{-12}$ to $10^{-8}$ for the value and both
-derivatives. Central finite differences at the domain corners, centre, and
-the five largest-error states provide an independent derivative sanity check
-with absolute agreement at most $10^{-5}$.
+The four positive kernels are the denominator, the $a$ numerator, and the
+positive- and negative-half magnitudes of the signed $\sigma_\alpha$
+numerator. Their log kernels are strictly concave: the first two on the real
+line and the latter two on their respective open half-lines. For each kernel,
+the oracle must:
+
+1. evaluate its analytic score and curvature;
+2. bracket the unique score root deterministically, starting at unit bounds
+   and doubling only a bound with the wrong score sign, for at most 64
+   expansions per bound;
+3. solve for the mode with `uniroot()`, set the local scale to the inverse
+   square root of the negative curvature, and call `stats::integrate()` on the
+   anchored kernel after transforming to mode-centred local-scale units; and
+4. start each unbounded tail at eight local scales from the mode and double its
+   distance for at most 20 expansions. At a left endpoint $L$ with score
+   $K'(L)>0$, strict concavity gives the omitted-mass bound
+   $\exp\{K(L)\}/K'(L)$; at a right endpoint $R$ with $K'(R)<0$, it gives
+   $\exp\{K(R)\}/[-K'(R)]$. The sum of applicable tail bounds must be at most
+   $10^{-14}$ of the enclosed integral.
+
+The half-line kernels are integrated separately, each with its own mode and
+scale, and each finite interval is split at its mode. Thus a mode close to the
+$z=0$ split is an anchored endpoint of two well-scaled calls rather than a
+narrow peak hidden at the end of a broad interval. The positive and negative
+log magnitudes are combined with signed log arithmetic using `expm1()` when
+they are close; they must not be exponentiated independently and naively
+subtracted.
+
+After the tail criterion first passes, one further doubling of every
+unbounded endpoint is mandatory. The value and both derivative outputs must
+change by at most $10^{-9}$, giving tenfold headroom on the $10^{-8}$
+strict/loose reference-agreement requirement. Reference calculations must be
+finite and must also agree between integration tolerances $10^{-10}$ and
+$10^{-12}$ to $10^{-8}$ for the value and both derivatives. Failure to bracket
+a mode, meet the tail bound within 20 expansions, complete an integration, or
+meet either stability check is an oracle error; it does not authorise another
+range, tolerance, or algorithm.
+
+Three regression states are mandatory:
+
+- $(10,5.5/60)$ must reproduce the independently widened calculation
+  $(-1351.413795,-460.412146,19422.772652)$ for
+  $(\log m_0,\partial_a\log m_0,\partial_\sigma\log m_0)$ within $5\times
+  10^{-6}$ and pass the tail and expansion checks;
+- $(10,0.55)$ must be finite at both locked tolerances and pass the same tail,
+  expansion, and strict/loose checks; and
+- $(10,0)$ must equal $(-\exp(10),-\exp(10),0)$, use the exact zero derivative,
+  and satisfy the evenness identity $\log m_0(a,h)=\log m_0(a,-h)$ to
+  $10^{-12}$ for $h=10^{-5}$. No forward quotient is used at this boundary.
+
+Central finite differences at positive $\sigma_\alpha$ states provide the
+independent derivative sanity check with absolute agreement at most $10^{-5}$.
+At $\sigma_\alpha=0$, the check is instead the exact zero derivative plus the
+evenness identity above. Before Task 3 begins, the repaired oracle must finish
+a finite precheck of all $61\times61$ protected-grid states: every result must
+be finite, every primitive must meet the tail and expansion criteria, and all
+three strict/loose agreements must be at most $10^{-8}$.
 
 ## Decision-scale gates
 
@@ -275,8 +328,10 @@ defect. Stop after the preflight decision and return it for PI assessment.
   paired experiment above; it does not retain the scientific model.
 - `CLOSE` ends Goal 002R computational repair.
 - A rule-generation or oracle failure is reported as an implementation
-  blocker and may receive one repair pass; it is not converted into a model
-  result.
+  blocker and may receive the one authorised repair pass. If that bounded pass
+  cannot satisfy the frozen criteria, the preflight returns `CLOSE`; it does
+  not search another range, tolerance, or algorithm. This is not evidence
+  against the ecological model.
 
 No empirical analysis, broader calibration, new integrator search, or
 ecological model extension begins in this tranche.
