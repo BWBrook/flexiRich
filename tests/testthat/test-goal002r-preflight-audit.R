@@ -337,6 +337,75 @@ testthat::test_that("bounded maxima recover distinct interior and boundary peaks
   testthat::expect_true(all(observed$convergence == 0L))
 })
 
+testthat::test_that("bounded maxima use the metric-specific twelve largest starts", {
+  candidates <- tibble::tibble(
+    candidate_id = seq_len(15L),
+    a = seq(-7, 7, length.out = 15L),
+    sigma_alpha = seq(0.25, 5.25, length.out = 15L),
+    target_error = 15:1,
+    scaled_a_error = 1:15,
+    scaled_sigma_error = c(8:15, 1:7),
+    scaled_log_sigma_error = c(15, 13, 11, 9, 7, 5, 3, 1, 2, 4, 6, 8, 10, 12, 14)
+  )
+  domain_audit <- tidyr::crossing(
+    order = c(256L, 512L),
+    candidate_id = candidates$candidate_id
+  ) |>
+    dplyr::left_join(candidates, by = "candidate_id") |>
+    dplyr::mutate(U = 29L)
+  calls <- tibble::tibble(a = numeric(), sigma_alpha = numeric())
+  bindings <- list(
+    goal002r_preflight_rule = function(order) order,
+    .goal002r_preflight_optim = function(start, objective, lower, upper) {
+      calls <<- dplyr::bind_rows(
+        calls,
+        tibble::tibble(a = start[[1L]], sigma_alpha = start[[2L]])
+      )
+      list(par = start, value = -1, convergence = 0L)
+    },
+    .goal002r_preflight_metric_at = function(
+      a,
+      sigma_alpha,
+      order,
+      rule,
+      metric
+    ) {
+      a + sigma_alpha + match(metric, .goal002r_preflight_metrics)
+    }
+  )
+  rlang::local_bindings(!!!bindings, .env = globalenv())
+  goal002r_preflight_search_maxima(domain_audit)
+
+  groups <- tibble::tibble(
+    order = rep(c(256L, 512L), each = length(.goal002r_preflight_metrics)),
+    metric = rep(.goal002r_preflight_metrics, times = 2L)
+  )
+  observed <- calls |>
+    dplyr::mutate(
+      group = ceiling(dplyr::row_number() / 12L),
+      start_rank = (dplyr::row_number() - 1L) %% 12L + 1L
+    ) |>
+    dplyr::left_join(
+      dplyr::mutate(groups, group = dplyr::row_number()),
+      by = "group"
+    ) |>
+    dplyr::select(order, metric, a, sigma_alpha, start_rank)
+  expected <- purrr::map2_dfr(groups$order, groups$metric, function(order, metric) {
+    domain_audit |>
+      dplyr::filter(.data$order == .env$order) |>
+      dplyr::arrange(dplyr::desc(.data[[metric]]), .data$a, .data$sigma_alpha) |>
+      dplyr::slice_head(n = 12L) |>
+      dplyr::transmute(
+        order,
+        metric = metric,
+        a,
+        sigma_alpha,
+        start_rank = dplyr::row_number()
+      )
+  })
+  testthat::expect_equal(observed, expected)
+})
+
 testthat::test_that("one upstream oracle failure aborts bounded search", {
   domain_audit <- goal002r_preflight_test_domain_starts()
   failing <- domain_audit[1L, ]
@@ -511,6 +580,34 @@ testthat::test_that("criteria apply exact full and headroom boundaries", {
   testthat::expect_true(all(headroom_equal$headroom_pass))
 })
 
+testthat::test_that("criteria include equality at every remaining full gate", {
+  cases <- tibble::tribble(
+    ~audit_column, ~criteria_column, ~threshold,
+    "value_agreement", "maximum_value_agreement", 1e-8,
+    "scaled_reference_a_uncertainty",
+      "maximum_scaled_reference_uncertainty", 1e-4,
+    "tail_relative_bound", "maximum_tail_relative_bound", 1e-14,
+    "expansion_change", "maximum_expansion_change", 1e-9
+  )
+  for (index in seq_len(nrow(cases))) {
+    audit <- goal002r_preflight_test_audit()
+    audit[[cases$audit_column[[index]]]] <- cases$threshold[[index]]
+    criteria <- goal002r_preflight_criteria(
+      audit,
+      audit,
+      goal002r_preflight_test_maxima()
+    )
+    testthat::expect_equal(
+      criteria[[cases$criteria_column[[index]]]],
+      rep(cases$threshold[[index]], 2L)
+    )
+    testthat::expect_true(
+      all(criteria$full_pass),
+      info = cases$criteria_column[[index]]
+    )
+  }
+})
+
 testthat::test_that("criteria require exact finite order and metric keys", {
   audit <- goal002r_preflight_test_audit()
   maxima <- goal002r_preflight_test_maxima()
@@ -557,15 +654,15 @@ testthat::test_that("derivative states combine anchors and worst unique states",
     -4, 1, 0, 90, 0, 0,
     -2, 1.5, 0, 0, 80, 0,
      0, 2, 0, 0, 0, 70,
-     2, 2.5, 60, 0, 0, 0
+     2, 2.5, 60, 60, 60, 60
   )
   decoys <- tibble::tibble(
     a = 3:7,
     sigma_alpha = seq(3, 5, length.out = 5L),
     target_error = c(50, 40, 30, 20, 10),
-    scaled_a_error = 0,
-    scaled_sigma_error = 0,
-    scaled_log_sigma_error = 0
+    scaled_a_error = c(50, 40, 30, 20, 10),
+    scaled_sigma_error = c(50, 40, 30, 20, 10),
+    scaled_log_sigma_error = c(50, 40, 30, 20, 10)
   )
   candidates <- dplyr::bind_rows(special, decoys) |>
     dplyr::mutate(candidate_id = dplyr::row_number())
@@ -594,6 +691,29 @@ testthat::test_that("derivative states combine anchors and worst unique states",
     dplyr::semi_join(states, special, by = c("a", "sigma_alpha")),
     dplyr::select(special, a, sigma_alpha)
   )
+  metric_columns <- c(
+    "target_error", "scaled_a_error", "scaled_sigma_error",
+    "scaled_log_sigma_error"
+  )
+  expected_worst <- dplyr::select(special, a, sigma_alpha)
+  for (omitted in metric_columns) {
+    remaining <- setdiff(metric_columns, omitted)
+    mutated_worst <- candidates |>
+      dplyr::mutate(score = do.call(pmax, unname(dplyr::select(
+        candidates,
+        dplyr::all_of(remaining)
+      )))) |>
+      dplyr::arrange(dplyr::desc(.data$score), .data$a, .data$sigma_alpha) |>
+      dplyr::slice_head(n = 5L) |>
+      dplyr::select(a, sigma_alpha)
+    testthat::expect_false(
+      setequal(
+        paste(mutated_worst$a, mutated_worst$sigma_alpha),
+        paste(expected_worst$a, expected_worst$sigma_alpha)
+      ),
+      info = omitted
+    )
+  }
 })
 
 testthat::test_that("preflight run assembles the locked result schema", {
