@@ -206,15 +206,23 @@ testthat::test_that("adaptive reference remains anchored near zero sigma", {
 
 testthat::test_that("whole-line oracle matches frozen difficult states", {
   sentinel <- goal002r_preflight_reference_pair(10, 5.5 / 60)
-  testthat::expect_equal(
-    sentinel[c("log_m0", "derivative_a", "derivative_sigma")],
-    c(
-      log_m0 = -1351.413795,
-      derivative_a = -460.412146,
-      derivative_sigma = 19422.772652
-    ),
-    tolerance = 5e-6
+  sentinel_expected <- c(
+    log_m0 = -1351.413795,
+    derivative_a = -460.412146,
+    derivative_sigma = 19422.772652
   )
+  sentinel_absolute_error <- abs(
+    sentinel[c("log_m0", "derivative_a", "derivative_sigma")] -
+      sentinel_expected
+  )
+  testthat::expect_lte(max(sentinel_absolute_error), 5e-6)
+  mutated_sentinel <- sentinel_expected
+  mutated_sentinel[["derivative_sigma"]] <-
+    mutated_sentinel[["derivative_sigma"]] + 0.05
+  testthat::expect_failure(testthat::expect_lte(
+    max(abs(mutated_sentinel - sentinel_expected)),
+    5e-6
+  ))
   half_kernel <- goal002r_preflight_reference_pair(10, 0.55)
   testthat::expect_true(all(is.finite(half_kernel)))
   for (result in list(sentinel, half_kernel)) {
@@ -281,11 +289,16 @@ testthat::test_that("narrow oracle intervals force certified expansion", {
   )
   testthat::expect_gt(attr(narrow, "tail_expansions"), 1L)
   testthat::expect_lte(attr(narrow, "tail_relative_bound"), 1e-14)
-  testthat::expect_equal(
-    as.numeric(narrow),
-    as.numeric(default),
-    tolerance = 1e-9
+  expansion_absolute_error <- abs(
+    as.numeric(narrow) - as.numeric(default)
   )
+  testthat::expect_lte(max(expansion_absolute_error), 1e-9)
+  mutated_narrow <- as.numeric(default)
+  mutated_narrow[3] <- mutated_narrow[3] + 1e-6
+  testthat::expect_failure(testthat::expect_lte(
+    max(abs(mutated_narrow - as.numeric(default))),
+    1e-9
+  ))
 })
 
 testthat::test_that("reference precheck freezes states and criteria", {
