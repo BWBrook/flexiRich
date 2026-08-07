@@ -162,3 +162,47 @@ testthat::test_that("exposure reduction preserves the row-wise calculation", {
   testthat::expect_true(all(checks$passed))
   testthat::expect_lte(max(checks$absolute_error), 1e-12)
 })
+
+testthat::test_that("adaptive references agree at both locked tolerances", {
+  states <- tibble::tribble(
+    ~a, ~sigma_alpha,
+    -8, 0,
+    -8, 5.5,
+     0, 2.75,
+    10, 0,
+    10, 5.5
+  )
+  for (index in seq_len(nrow(states))) {
+    result <- goal002r_preflight_reference_pair(
+      states$a[index],
+      states$sigma_alpha[index]
+    )
+    testthat::expect_true(all(is.finite(result)))
+    testthat::expect_lte(
+      max(result[c(
+        "value_agreement",
+        "derivative_a_agreement",
+        "derivative_sigma_agreement"
+      )]),
+      1e-8
+    )
+  }
+})
+
+testthat::test_that("adaptive reference remains anchored near zero sigma", {
+  result <- goal002r_preflight_reference(10, 1e-5, 1e-12)
+  testthat::expect_true(all(is.finite(result)))
+})
+
+testthat::test_that("reference derivatives pass finite differences", {
+  states <- tibble::tribble(
+    ~a, ~sigma_alpha,
+    -8, 5.5,
+     0, 2.75,
+    10, 5.5
+  )
+  checks <- goal002r_preflight_finite_difference_checks(states)
+  testthat::expect_identical(nrow(checks), 6L)
+  testthat::expect_true(all(checks$passed))
+  testthat::expect_lte(max(checks$absolute_error), 1e-5)
+})

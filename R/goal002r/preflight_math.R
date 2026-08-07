@@ -156,6 +156,177 @@ goal002r_preflight_gh <- function(a, sigma_alpha, rule) {
   )
 }
 
+.goal002r_preflight_anchored_integral <- function(
+  log_kernel,
+  lower,
+  upper,
+  rel_tol
+) {
+  optimum <- stats::optimize(
+    log_kernel,
+    interval = c(lower, upper),
+    maximum = TRUE
+  )
+  anchor <- log_kernel(optimum$maximum)
+  anchored <- stats::integrate(
+    function(z) exp(log_kernel(z) - anchor),
+    lower = lower,
+    upper = upper,
+    rel.tol = rel_tol,
+    abs.tol = 0
+  )$value
+  anchor + log(anchored)
+}
+
+.goal002r_preflight_reference_core <- function(a, sigma_alpha, rel_tol) {
+  if (sigma_alpha == 0) {
+    value <- -exp(a)
+    return(c(
+      log_m0 = value,
+      derivative_a = value,
+      derivative_sigma = 0
+    ))
+  }
+
+  log_denominator <- function(z) {
+    log_t <- a + sigma_alpha * z
+    stats::dnorm(z, log = TRUE) - exp(log_t)
+  }
+  log_numerator_a <- function(z) {
+    log_denominator(z) + a + sigma_alpha * z
+  }
+  log_numerator_sigma <- function(z) {
+    log_numerator_a(z) + log(abs(z))
+  }
+  anchored_integral <- function(log_kernel, lower, upper) {
+    .goal002r_preflight_anchored_integral(
+      log_kernel,
+      lower,
+      upper,
+      rel_tol
+    )
+  }
+
+  log_denominator_integral <- anchored_integral(log_denominator, -12, 12)
+  log_numerator_a_integral <- anchored_integral(
+    log_numerator_a,
+    -12,
+    12
+  )
+  log_numerator_sigma_positive <- anchored_integral(
+    log_numerator_sigma,
+    0,
+    12
+  )
+  log_numerator_sigma_negative <- anchored_integral(
+    log_numerator_sigma,
+    -12,
+    0
+  )
+  numerator_sigma_over_denominator <-
+    exp(log_numerator_sigma_positive - log_denominator_integral) -
+    exp(log_numerator_sigma_negative - log_denominator_integral)
+  c(
+    log_m0 = log_denominator_integral,
+    derivative_a = -exp(
+      log_numerator_a_integral - log_denominator_integral
+    ),
+    derivative_sigma = -numerator_sigma_over_denominator
+  )
+}
+
+goal002r_preflight_reference <- function(a, sigma_alpha, rel_tol) {
+  contract <- goal002r_preflight_contract()
+  a <- .goal002r_scalar(
+    a,
+    "a",
+    lower = contract$a_bounds[1],
+    upper = contract$a_bounds[2]
+  )
+  sigma_alpha <- .goal002r_scalar(
+    sigma_alpha,
+    "sigma_alpha",
+    lower = contract$sigma_bounds[1],
+    upper = contract$sigma_bounds[2]
+  )
+  rel_tol <- .goal002r_scalar(rel_tol, "rel_tol", lower = 0)
+  if (rel_tol == 0) {
+    .goal002r_stop("rel_tol must be positive.")
+  }
+  .goal002r_preflight_reference_core(a, sigma_alpha, rel_tol)
+}
+
+goal002r_preflight_reference_pair <- function(a, sigma_alpha) {
+  tolerance <- goal002r_preflight_contract()$reference_tolerances
+  loose <- goal002r_preflight_reference(a, sigma_alpha, tolerance[1])
+  strict <- goal002r_preflight_reference(a, sigma_alpha, tolerance[2])
+  c(
+    strict,
+    value_agreement = abs(strict[["log_m0"]] - loose[["log_m0"]]),
+    derivative_a_agreement = abs(
+      strict[["derivative_a"]] - loose[["derivative_a"]]
+    ),
+    derivative_sigma_agreement = abs(
+      strict[["derivative_sigma"]] - loose[["derivative_sigma"]]
+    )
+  )
+}
+
+goal002r_preflight_finite_difference_checks <- function(states) {
+  if (!tibble::is_tibble(states) ||
+      !identical(names(states), c("a", "sigma_alpha"))) {
+    .goal002r_stop("states must contain exactly a and sigma_alpha.")
+  }
+  tolerance <- goal002r_preflight_contract()$finite_difference_tolerance
+  rel_tol <- goal002r_preflight_contract()$reference_tolerances[2]
+  rows <- lapply(seq_len(nrow(states)), function(index) {
+    a <- states$a[index]
+    sigma_alpha <- states$sigma_alpha[index]
+    analytic <- goal002r_preflight_reference(
+      a,
+      sigma_alpha,
+      rel_tol
+    )
+    value <- function(a_value, sigma_value) {
+      .goal002r_preflight_reference_core(
+        a_value,
+        sigma_value,
+        rel_tol
+      )[["log_m0"]]
+    }
+    h_a <- 1e-5
+    h_sigma <- max(1e-5, sigma_alpha * 1e-5)
+    finite_difference_a <- (
+      value(a + h_a, sigma_alpha) -
+      value(a - h_a, sigma_alpha)
+    ) / (2 * h_a)
+    if (sigma_alpha - h_sigma < 0) {
+      finite_difference_sigma <- (
+        value(a, sigma_alpha + h_sigma) -
+        value(a, sigma_alpha)
+      ) / h_sigma
+    } else {
+      finite_difference_sigma <- (
+        value(a, sigma_alpha + h_sigma) -
+        value(a, sigma_alpha - h_sigma)
+      ) / (2 * h_sigma)
+    }
+    finite_difference <- c(finite_difference_a, finite_difference_sigma)
+    analytic <- unname(analytic[c("derivative_a", "derivative_sigma")])
+    absolute_error <- abs(analytic - finite_difference)
+    tibble::tibble(
+      a = rep(a, 2L),
+      sigma_alpha = rep(sigma_alpha, 2L),
+      parameter = c("a", "sigma_alpha"),
+      analytic = analytic,
+      finite_difference = finite_difference,
+      absolute_error = absolute_error,
+      passed = absolute_error <= tolerance
+    )
+  })
+  do.call(rbind, rows)
+}
+
 goal002r_preflight_algebra_checks <- function() {
   zero_history <- tibble::tribble(
     ~camera_id, ~active_days, ~n_trials,
