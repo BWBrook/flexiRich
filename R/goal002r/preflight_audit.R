@@ -63,6 +63,39 @@ goal002r_preflight_domain_grid <- function() {
     dplyr::mutate(U = 29L)
 }
 
+.goal002r_preflight_metrics <- c(
+  "target_error",
+  "scaled_a_error",
+  "scaled_sigma_error",
+  "scaled_log_sigma_error"
+)
+
+.goal002r_preflight_metric_values <- function(
+  candidate,
+  reference,
+  U,
+  sigma_alpha
+) {
+  contract <- goal002r_preflight_contract()
+  derivative_a_error <- abs(
+    candidate[["derivative_a"]] - reference[["derivative_a"]]
+  )
+  derivative_sigma_error <- abs(
+    candidate[["derivative_sigma"]] - reference[["derivative_sigma"]]
+  )
+  c(
+    target_error = U * abs(
+      candidate[["log_m0"]] - reference[["log_m0"]]
+    ),
+    scaled_a_error = contract$gradient_scales[["a"]] * U *
+      derivative_a_error,
+    scaled_sigma_error = contract$gradient_scales[["sigma"]] * U *
+      derivative_sigma_error,
+    scaled_log_sigma_error = contract$gradient_scales[["log_sigma"]] * U *
+      sigma_alpha * derivative_sigma_error
+  )
+}
+
 .goal002r_preflight_state_id <- function(source, index, a, sigma_alpha) {
   sprintf(
     "%s row %d (a=%.8g, sigma_alpha=%.8g)",
@@ -140,11 +173,11 @@ goal002r_preflight_audit <- function(states, source) {
           " at ", state_id, "."
         ))
       }
-      derivative_a_error <- abs(
-        candidate[["derivative_a"]] - reference[["derivative_a"]]
-      )
-      derivative_sigma_error <- abs(
-        candidate[["derivative_sigma"]] - reference[["derivative_sigma"]]
+      metrics <- .goal002r_preflight_metric_values(
+        candidate,
+        reference,
+        U,
+        sigma_alpha
       )
       tibble::tibble(
         source = source,
@@ -156,13 +189,10 @@ goal002r_preflight_audit <- function(states, source) {
         reference_log_m0 = reference[["log_m0"]],
         reference_derivative_a = reference[["derivative_a"]],
         reference_derivative_sigma = reference[["derivative_sigma"]],
-        target_error = U * abs(
-          candidate[["log_m0"]] - reference[["log_m0"]]
-        ),
-        scaled_a_error = 1.5 * U * derivative_a_error,
-        scaled_sigma_error = 0.85 * U * derivative_sigma_error,
-        scaled_log_sigma_error = 1.2 * U * sigma_alpha *
-          derivative_sigma_error,
+        target_error = metrics[["target_error"]],
+        scaled_a_error = metrics[["scaled_a_error"]],
+        scaled_sigma_error = metrics[["scaled_sigma_error"]],
+        scaled_log_sigma_error = metrics[["scaled_log_sigma_error"]],
         value_agreement = pair[["value_agreement"]],
         derivative_a_agreement = pair[["derivative_a_agreement"]],
         derivative_sigma_agreement = pair[["derivative_sigma_agreement"]],
@@ -221,7 +251,6 @@ goal002r_preflight_select <- function(criteria) {
   rule,
   metric
 ) {
-  contract <- goal002r_preflight_contract()
   state_id <- .goal002r_preflight_state_id(
     paste0("search order ", order, " ", metric),
     1L,
@@ -234,30 +263,74 @@ goal002r_preflight_select <- function(criteria) {
   if (!all(is.finite(candidate))) {
     .goal002r_stop(paste0("Non-finite preflight search result at ", state_id, "."))
   }
-  value_error <- abs(candidate[["log_m0"]] - pair[["log_m0"]])
-  derivative_a_error <- abs(
-    candidate[["derivative_a"]] - pair[["derivative_a"]]
+  values <- .goal002r_preflight_metric_values(
+    candidate,
+    pair,
+    goal002r_preflight_contract()$max_unseen,
+    sigma_alpha
   )
-  derivative_sigma_error <- abs(
-    candidate[["derivative_sigma"]] - pair[["derivative_sigma"]]
+  value <- unname(values[[metric]])
+  if (!is.finite(value)) {
+    .goal002r_stop("Preflight search metric was non-finite.")
+  }
+  value
+}
+
+.goal002r_preflight_evaluator_stop <- function(
+  error,
+  order,
+  metric,
+  a,
+  sigma_alpha
+) {
+  message <- sprintf(
+    paste0(
+      "Preflight evaluator failure for order %d, metric %s at ",
+      "a=%.16g, sigma_alpha=%.16g: %s"
+    ),
+    order,
+    metric,
+    a,
+    sigma_alpha,
+    conditionMessage(error)
   )
-  values <- c(
-    target_error = contract$max_unseen * value_error,
-    scaled_a_error = contract$gradient_scales[["a"]] *
-      contract$max_unseen * derivative_a_error,
-    scaled_sigma_error = contract$gradient_scales[["sigma"]] *
-      contract$max_unseen * derivative_sigma_error,
-    scaled_log_sigma_error = contract$gradient_scales[["log_sigma"]] *
-      contract$max_unseen * sigma_alpha * derivative_sigma_error
+  condition <- structure(
+    list(message = message, call = NULL, parent = error),
+    class = c("goal002r_preflight_evaluator_error", "error", "condition")
   )
-  unname(values[[metric]])
+  stop(condition)
+}
+
+.goal002r_preflight_search_value <- function(par, order, rule, metric) {
+  tryCatch(
+    .goal002r_preflight_metric_at(par[1], par[2], order, rule, metric),
+    error = function(error) {
+      if (inherits(error, "goal002r_preflight_evaluator_error")) {
+        stop(error)
+      }
+      .goal002r_preflight_evaluator_stop(
+        error,
+        order,
+        metric,
+        par[1],
+        par[2]
+      )
+    }
+  )
+}
+
+.goal002r_preflight_optim <- function(start, objective, lower, upper) {
+  stats::optim(
+    par = start,
+    fn = objective,
+    method = "L-BFGS-B",
+    lower = lower,
+    upper = upper
+  )
 }
 
 goal002r_preflight_search_maxima <- function(domain_audit) {
-  metrics <- c(
-    "target_error", "scaled_a_error", "scaled_sigma_error",
-    "scaled_log_sigma_error"
-  )
+  metrics <- .goal002r_preflight_metrics
   required <- c("order", "a", "sigma_alpha", "U", metrics)
   if (!tibble::is_tibble(domain_audit) ||
       !all(required %in% names(domain_audit))) {
@@ -289,22 +362,16 @@ goal002r_preflight_search_maxima <- function(domain_audit) {
       attempts <- lapply(seq_len(nrow(starts)), function(index) {
         start <- c(starts$a[index], starts$sigma_alpha[index])
         fit <- tryCatch(
-          stats::optim(
-            par = start,
-            fn = function(par) {
-              -.goal002r_preflight_metric_at(
-                par[1], par[2], order, rule, metric
-              )
+          .goal002r_preflight_optim(
+            start = start,
+            objective = function(par) {
+              -.goal002r_preflight_search_value(par, order, rule, metric)
             },
-            method = "L-BFGS-B",
-            lower = c(-8, 0),
-            upper = c(10, 5.5)
+            lower = c(contract$a_bounds[1], contract$sigma_bounds[1]),
+            upper = c(contract$a_bounds[2], contract$sigma_bounds[2])
           ),
           error = function(error) {
-            if (grepl(
-              "^(Preflight oracle failure|Non-finite preflight)",
-              conditionMessage(error)
-            )) {
+            if (inherits(error, "goal002r_preflight_evaluator_error")) {
               stop(error)
             }
             NULL
@@ -312,14 +379,9 @@ goal002r_preflight_search_maxima <- function(domain_audit) {
         )
         if (is.null(fit)) return(NULL)
         observed <- tryCatch(
-          .goal002r_preflight_metric_at(
-            fit$par[1], fit$par[2], order, rule, metric
-          ),
+          .goal002r_preflight_search_value(fit$par, order, rule, metric),
           error = function(error) {
-            if (grepl(
-              "^(Preflight oracle failure|Non-finite preflight)",
-              conditionMessage(error)
-            )) {
+            if (inherits(error, "goal002r_preflight_evaluator_error")) {
               stop(error)
             }
             NA_real_
@@ -354,10 +416,7 @@ goal002r_preflight_criteria <- function(
   domain_audit,
   maxima
 ) {
-  metrics <- c(
-    "target_error", "scaled_a_error", "scaled_sigma_error",
-    "scaled_log_sigma_error"
-  )
+  metrics <- .goal002r_preflight_metrics
   audit_required <- c(
     "order", metrics, "value_agreement", "derivative_a_mixed_pass",
     "derivative_sigma_mixed_pass", "scaled_reference_a_uncertainty",
@@ -374,12 +433,28 @@ goal002r_preflight_criteria <- function(
     .goal002r_stop("Preflight criteria inputs have an invalid schema.")
   }
   contract <- goal002r_preflight_contract()
+  expected_keys <- tidyr::crossing(
+    order = contract$orders,
+    metric = metrics
+  ) |>
+    dplyr::arrange(order, metric)
+  maxima_keys <- maxima |>
+    dplyr::select(order, metric) |>
+    dplyr::arrange(order, metric)
+  maxima_valid <- nrow(maxima) == nrow(expected_keys) &&
+    !anyDuplicated(maxima[c("order", "metric")]) &&
+    identical(maxima_keys, expected_keys) &&
+    is.numeric(maxima$observed) && all(is.finite(maxima$observed))
+  if (!maxima_valid) {
+    .goal002r_stop(
+      "Preflight criteria require exactly one finite maximum per order and metric."
+    )
+  }
   audit <- dplyr::bind_rows(posterior_audit, domain_audit)
   rows <- lapply(contract$orders, function(order) {
     order_audit <- audit[audit$order == order, , drop = FALSE]
     order_maxima <- maxima[maxima$order == order, , drop = FALSE]
-    if (nrow(order_audit) == 0L ||
-        !setequal(order_maxima$metric, metrics)) {
+    if (nrow(order_audit) == 0L) {
       .goal002r_stop("Preflight criteria require both complete order audits.")
     }
     searched_target <- order_maxima$observed[
@@ -445,10 +520,7 @@ goal002r_preflight_criteria <- function(
   posterior_audit,
   domain_audit
 ) {
-  metrics <- c(
-    "target_error", "scaled_a_error", "scaled_sigma_error",
-    "scaled_log_sigma_error"
-  )
+  metrics <- .goal002r_preflight_metrics
   audit <- dplyr::bind_rows(posterior_audit, domain_audit)
   if (!all(c("a", "sigma_alpha", metrics) %in% names(audit))) {
     .goal002r_stop("Preflight audits lack derivative-state columns.")
@@ -485,7 +557,61 @@ goal002r_preflight_criteria <- function(
   )
 }
 
+.goal002r_preflight_rule_integrity <- function() {
+  contract <- goal002r_preflight_contract()
+  checks <- dplyr::bind_rows(lapply(contract$orders, function(order) {
+    goal002r_preflight_rule_checks(goal002r_preflight_rule(order), order)
+  }))
+  expected_names <- c("order", "check", "observed", "threshold", "passed")
+  order_counts <- if (all(c("order", "check") %in% names(checks))) {
+    table(checks$order)
+  } else {
+    integer()
+  }
+  valid <- tibble::is_tibble(checks) &&
+    identical(names(checks), expected_names) &&
+    nrow(checks) == 18L &&
+    !anyNA(checks) &&
+    identical(names(order_counts), as.character(contract$orders)) &&
+    identical(as.integer(order_counts), c(9L, 9L)) &&
+    !anyDuplicated(checks[c("order", "check")]) &&
+    is.numeric(checks$observed) && all(is.finite(checks$observed)) &&
+    is.numeric(checks$threshold) && all(is.finite(checks$threshold)) &&
+    is.logical(checks$passed) && !anyNA(checks$passed) && all(checks$passed)
+  if (!valid) {
+    .goal002r_stop("Preflight rule integrity checks failed.")
+  }
+  checks
+}
+
+.goal002r_preflight_algebra_integrity <- function() {
+  checks <- goal002r_preflight_algebra_checks()
+  expected_names <- c(
+    "sigma_alpha", "rowwise_log_m0", "reduced_log_m0",
+    "absolute_error", "passed"
+  )
+  numeric_names <- expected_names[expected_names != "passed"]
+  schema_valid <- tibble::is_tibble(checks) &&
+    identical(names(checks), expected_names)
+  numeric_valid <- schema_valid && all(vapply(
+    checks[numeric_names],
+    function(value) is.numeric(value) && all(is.finite(value)),
+    logical(1)
+  ))
+  valid <- schema_valid &&
+    nrow(checks) == 4L &&
+    nrow(dplyr::distinct(checks, sigma_alpha)) == 4L &&
+    numeric_valid &&
+    is.logical(checks$passed) && !anyNA(checks$passed) && all(checks$passed)
+  if (!valid) {
+    .goal002r_stop("Preflight algebra integrity checks failed.")
+  }
+  checks
+}
+
 goal002r_preflight_run <- function() {
+  rule_checks <- .goal002r_preflight_rule_integrity()
+  algebra_checks <- .goal002r_preflight_algebra_integrity()
   posterior_audit <- goal002r_preflight_audit(
     goal002r_preflight_posterior_states(),
     source = "posterior"
@@ -500,21 +626,23 @@ goal002r_preflight_run <- function() {
     domain_audit,
     maxima
   )
-  decision <- goal002r_preflight_select(criteria)
-  contract <- goal002r_preflight_contract()
-  rule_checks <- dplyr::bind_rows(lapply(contract$orders, function(order) {
-    goal002r_preflight_rule_checks(goal002r_preflight_rule(order), order)
-  }))
   derivative_checks <- goal002r_preflight_derivative_checks(
     .goal002r_preflight_derivative_states(posterior_audit, domain_audit)
   )
-  if (nrow(derivative_checks) != 20L || !all(derivative_checks$passed)) {
+  derivative_valid <- tibble::is_tibble(derivative_checks) &&
+    nrow(derivative_checks) == 20L &&
+    "passed" %in% names(derivative_checks) &&
+    is.logical(derivative_checks$passed) &&
+    !anyNA(derivative_checks$passed) &&
+    all(derivative_checks$passed)
+  if (!derivative_valid) {
     .goal002r_stop("Preflight derivative sanity checks failed.")
   }
+  decision <- goal002r_preflight_select(criteria)
   list(
     rule_integrity = dplyr::bind_rows(
       rule_checks,
-      goal002r_preflight_algebra_checks(),
+      algebra_checks,
       derivative_checks
     ),
     posterior_audit = posterior_audit,

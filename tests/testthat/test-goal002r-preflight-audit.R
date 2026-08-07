@@ -1,9 +1,175 @@
+goal002r_preflight_test_pair <- function(
+  log_m0 = -10,
+  derivative_a = -2,
+  derivative_sigma = 5
+) {
+  c(
+    log_m0 = log_m0,
+    derivative_a = derivative_a,
+    derivative_sigma = derivative_sigma,
+    value_agreement = 0,
+    derivative_a_agreement = 0,
+    derivative_sigma_agreement = 0,
+    derivative_a_mixed_limit = 1e-8,
+    derivative_sigma_mixed_limit = 1e-8,
+    derivative_a_mixed_pass = 1,
+    derivative_sigma_mixed_pass = 1,
+    scaled_reference_a_uncertainty = 0,
+    scaled_reference_sigma_uncertainty = 0,
+    scaled_reference_a_pass = 1,
+    scaled_reference_sigma_pass = 1,
+    maximum_tail_relative_bound = 0,
+    maximum_expansion_change = 0,
+    maximum_tail_expansions = 0
+  )
+}
+
+goal002r_preflight_test_domain_starts <- function() {
+  coordinates <- tibble::tibble(
+    start_id = seq_len(12L),
+    a = c(-7, -6, -5, -4, -3, -2, 0, 1, 3, 5, 7, 9),
+    sigma_alpha = c(0.5, 1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.25, 5.4)
+  )
+  tidyr::crossing(order = c(256L, 512L), start_id = seq_len(12L)) |>
+    dplyr::left_join(coordinates, by = "start_id") |>
+    dplyr::mutate(
+      U = 29L,
+      target_error = 13 - start_id,
+      scaled_a_error = 13 - start_id,
+      scaled_sigma_error = 13 - start_id,
+      scaled_log_sigma_error = 13 - start_id
+    )
+}
+
+goal002r_preflight_test_audit <- function(
+  target_error = 0,
+  scaled_a_error = 0,
+  scaled_sigma_error = 0,
+  scaled_log_sigma_error = 0
+) {
+  tibble::tibble(
+    order = c(256L, 512L),
+    target_error = target_error,
+    scaled_a_error = scaled_a_error,
+    scaled_sigma_error = scaled_sigma_error,
+    scaled_log_sigma_error = scaled_log_sigma_error,
+    value_agreement = 0,
+    derivative_a_mixed_pass = TRUE,
+    derivative_sigma_mixed_pass = TRUE,
+    scaled_reference_a_uncertainty = 0,
+    scaled_reference_sigma_uncertainty = 0,
+    tail_relative_bound = 0,
+    expansion_change = 0
+  )
+}
+
+goal002r_preflight_test_maxima <- function(
+  target_error = 0,
+  scaled_a_error = 0,
+  scaled_sigma_error = 0,
+  scaled_log_sigma_error = 0
+) {
+  values <- c(
+    target_error = target_error,
+    scaled_a_error = scaled_a_error,
+    scaled_sigma_error = scaled_sigma_error,
+    scaled_log_sigma_error = scaled_log_sigma_error
+  )
+  tidyr::crossing(
+    order = c(256L, 512L),
+    metric = names(values)
+  ) |>
+    dplyr::mutate(observed = unname(values[metric]))
+}
+
+goal002r_preflight_test_rule_checks <- function() {
+  tidyr::crossing(order = c(256L, 512L), check_index = seq_len(9L)) |>
+    dplyr::transmute(
+      order,
+      check = paste0("check_", check_index),
+      observed = 0,
+      threshold = 1,
+      passed = TRUE
+    )
+}
+
+goal002r_preflight_test_algebra_checks <- function() {
+  tibble::tibble(
+    sigma_alpha = c(0, 0.4, 1.1, 2),
+    rowwise_log_m0 = -1,
+    reduced_log_m0 = -1,
+    absolute_error = 0,
+    passed = TRUE
+  )
+}
+
+goal002r_preflight_test_run_bindings <- function(
+  rule_checks = goal002r_preflight_test_rule_checks(),
+  algebra_checks = goal002r_preflight_test_algebra_checks(),
+  derivative_passed = rep(TRUE, 20L)
+) {
+  posterior_audit <- tibble::tibble(source = "posterior")
+  domain_audit <- tibble::tibble(source = "domain")
+  maxima <- tibble::tibble(marker = "maxima")
+  criteria <- tibble::tibble(marker = "criteria")
+  list(
+    goal002r_preflight_posterior_states = function() tibble::tibble(U = 1L),
+    goal002r_preflight_domain_grid = function() tibble::tibble(U = 29L),
+    goal002r_preflight_audit = function(states, source) {
+      if (source == "posterior") posterior_audit else domain_audit
+    },
+    goal002r_preflight_search_maxima = function(domain_audit) maxima,
+    goal002r_preflight_criteria = function(...) criteria,
+    goal002r_preflight_select = function(criteria) "SELECT_256",
+    goal002r_preflight_rule = function(order) order,
+    goal002r_preflight_rule_checks = function(rule, order) {
+      rule_checks[rule_checks$order == order, , drop = FALSE]
+    },
+    goal002r_preflight_algebra_checks = function() algebra_checks,
+    .goal002r_preflight_derivative_states = function(...) {
+      tibble::tibble(a = seq_len(10L), sigma_alpha = 1)
+    },
+    goal002r_preflight_derivative_checks = function(states) {
+      tibble::tibble(
+        check_type = rep("derivative", 20L),
+        passed = derivative_passed
+      )
+    }
+  )
+}
+
 testthat::test_that("preflight states reproduce the locked evidence", {
   states <- goal002r_preflight_posterior_states()
   testthat::expect_identical(nrow(states), 750L)
+  testthat::expect_identical(names(states), c(
+    "case_id", "check_source", "posterior_row", "a", "sigma_alpha", "U"
+  ))
   testthat::expect_setequal(
     unique(states$case_id),
     goal002r_paired_cases()$case_id
+  )
+  testthat::expect_equal(
+    dplyr::count(states, case_id),
+    tibble::tibble(
+      case_id = c(
+        "historical-hard", "small-easy", "small-unseen",
+        "standard-long-medium", "standard-short-high",
+        "standard-short-low"
+      ),
+      n = rep(125L, 6L)
+    )
+  )
+  testthat::expect_equal(
+    dplyr::arrange(dplyr::distinct(states, case_id, U), case_id),
+    tibble::tribble(
+      ~case_id, ~U,
+      "historical-hard", 10L,
+      "small-easy", 4L,
+      "small-unseen", 6L,
+      "standard-long-medium", 11L,
+      "standard-short-high", 15L,
+      "standard-short-low", 29L
+    )
   )
   testthat::expect_true(all(states$U >= 0L & states$U <= 29L))
   testthat::expect_equal(
@@ -21,31 +187,77 @@ testthat::test_that("preflight states reproduce the locked evidence", {
 testthat::test_that("protected grid includes every boundary", {
   grid <- goal002r_preflight_domain_grid()
   testthat::expect_identical(nrow(grid), 61L * 61L)
+  testthat::expect_identical(
+    sort(unique(grid$a)),
+    seq(-8, 10, length.out = 61L)
+  )
+  testthat::expect_identical(
+    sort(unique(grid$sigma_alpha)),
+    seq(0, 5.5, length.out = 61L)
+  )
+  testthat::expect_identical(
+    nrow(dplyr::distinct(grid, a, sigma_alpha)),
+    61L * 61L
+  )
   testthat::expect_identical(range(grid$a), c(-8, 10))
   testthat::expect_identical(range(grid$sigma_alpha), c(0, 5.5))
   testthat::expect_true(all(grid$U == 29L))
 })
 
 testthat::test_that("audit reports both orders and scaled discrepancies", {
+  calls <- new.env(parent = emptyenv())
+  calls$references <- 0L
+  calls$rules <- integer()
+  calls$candidate_orders <- integer()
+  bindings <- list(
+    goal002r_preflight_reference_pair = function(a, sigma_alpha) {
+      calls$references <- calls$references + 1L
+      goal002r_preflight_test_pair()
+    },
+    goal002r_preflight_rule = function(order) {
+      calls$rules <- c(calls$rules, order)
+      order
+    },
+    goal002r_preflight_gh = function(a, sigma_alpha, rule) {
+      calls$candidate_orders <- c(calls$candidate_orders, rule)
+      if (rule == 256L) {
+        c(log_m0 = -9, derivative_a = -4, derivative_sigma = 1)
+      } else {
+        c(log_m0 = -12, derivative_a = -1, derivative_sigma = 7)
+      }
+    }
+  )
+  rlang::local_bindings(!!!bindings, .env = globalenv())
   states <- tibble::tribble(
     ~a, ~sigma_alpha, ~U,
-    -8, 0, 29L,
-     0, 2.75, 29L,
-    10, 5.5, 29L
+    1, 2, 3L,
+    2, 0.5, 7L
   )
   audit <- goal002r_preflight_audit(states, source = "test")
-  testthat::expect_identical(nrow(audit), 6L)
-  testthat::expect_setequal(unique(audit$order), c(256L, 512L))
-  testthat::expect_true(all(c(
-    "target_error", "scaled_a_error", "scaled_sigma_error",
-    "scaled_log_sigma_error", "value_agreement",
-    "derivative_a_mixed_pass", "derivative_sigma_mixed_pass",
-    "scaled_reference_a_uncertainty",
-    "scaled_reference_sigma_uncertainty", "tail_relative_bound",
-    "expansion_change"
-  ) %in% names(audit)))
-  numeric <- audit[vapply(audit, is.numeric, logical(1))]
-  testthat::expect_true(all(is.finite(unlist(numeric))))
+  testthat::expect_identical(calls$references, 2L)
+  testthat::expect_identical(calls$rules, c(256L, 512L))
+  testthat::expect_identical(
+    calls$candidate_orders,
+    c(256L, 512L, 256L, 512L)
+  )
+  observed <- dplyr::select(
+    audit,
+    state_index,
+    order,
+    target_error,
+    scaled_a_error,
+    scaled_sigma_error,
+    scaled_log_sigma_error
+  )
+  expected <- tibble::tribble(
+    ~state_index, ~order, ~target_error, ~scaled_a_error,
+    ~scaled_sigma_error, ~scaled_log_sigma_error,
+    1L, 256L, 3, 9, 10.2, 28.8,
+    1L, 512L, 6, 4.5, 5.1, 14.4,
+    2L, 256L, 7, 21, 23.8, 16.8,
+    2L, 512L, 14, 10.5, 11.9, 8.4
+  )
+  testthat::expect_equal(observed, expected, tolerance = 1e-12)
 })
 
 testthat::test_that("selection precedence is 256 headroom then 512 then close", {
@@ -70,60 +282,131 @@ testthat::test_that("selection precedence is 256 headroom then 512 then close", 
   )
 })
 
-testthat::test_that("bounded maxima search reports every order and metric", {
-  domain_audit <- tidyr::crossing(
-    order = c(256L, 512L),
-    state_index = seq_len(12L)
-  ) |>
-    dplyr::mutate(
-      a = 0,
-      sigma_alpha = 0,
-      U = 29L,
-      target_error = 0,
-      scaled_a_error = 0,
-      scaled_sigma_error = 0,
-      scaled_log_sigma_error = 0
-    )
+testthat::test_that("bounded maxima recover distinct interior and boundary peaks", {
+  domain_audit <- goal002r_preflight_test_domain_starts()
+  bindings <- list(
+    goal002r_preflight_rule = function(order) order,
+    .goal002r_preflight_metric_at = function(
+      a,
+      sigma_alpha,
+      order,
+      rule,
+      metric
+    ) {
+      switch(
+        metric,
+        target_error = 100 - (a - 2)^2 - (sigma_alpha - 1)^2,
+        scaled_a_error = 50 - (a + 8)^2 - (sigma_alpha - 2)^2,
+        scaled_sigma_error = 40 - (a - 10)^2 - (sigma_alpha - 5.5)^2,
+        scaled_log_sigma_error = 30 - (a + 3)^2 - (sigma_alpha - 4)^2
+      )
+    }
+  )
+  rlang::local_bindings(!!!bindings, .env = globalenv())
   maxima <- goal002r_preflight_search_maxima(domain_audit)
   testthat::expect_identical(nrow(maxima), 8L)
   testthat::expect_identical(
     names(maxima),
     c("order", "metric", "a", "sigma_alpha", "observed", "convergence")
   )
-  testthat::expect_setequal(maxima$order, c(256L, 512L))
-  testthat::expect_setequal(maxima$metric, c(
-    "target_error", "scaled_a_error", "scaled_sigma_error",
-    "scaled_log_sigma_error"
-  ))
-  testthat::expect_true(all(is.finite(maxima$observed)))
-  testthat::expect_true(all(maxima$a >= -8 & maxima$a <= 10))
-  testthat::expect_true(all(
-    maxima$sigma_alpha >= 0 & maxima$sigma_alpha <= 5.5
-  ))
+  testthat::expect_false(anyDuplicated(maxima[c("order", "metric")]) > 0L)
+  expected <- tibble::tribble(
+    ~metric, ~a, ~sigma_alpha, ~observed,
+    "target_error", 2, 1, 100,
+    "scaled_a_error", -8, 2, 50,
+    "scaled_sigma_error", 10, 5.5, 40,
+    "scaled_log_sigma_error", -3, 4, 30
+  )
+  observed <- dplyr::left_join(
+    maxima,
+    expected,
+    by = "metric",
+    suffix = c("", "_expected")
+  )
+  testthat::expect_equal(observed$a, observed$a_expected, tolerance = 1e-5)
+  testthat::expect_equal(
+    observed$sigma_alpha,
+    observed$sigma_alpha_expected,
+    tolerance = 1e-5
+  )
+  testthat::expect_equal(
+    observed$observed,
+    observed$observed_expected,
+    tolerance = 1e-8
+  )
+  testthat::expect_true(all(observed$convergence == 0L))
 })
 
-testthat::test_that("bounded search does not hide oracle failures", {
-  domain_audit <- tidyr::crossing(
-    order = c(256L, 512L),
-    state_index = seq_len(12L)
-  ) |>
-    dplyr::mutate(
-      a = 0,
-      sigma_alpha = 0,
-      U = 29L,
-      target_error = 0,
-      scaled_a_error = 0,
-      scaled_sigma_error = 0,
-      scaled_log_sigma_error = 0
-    )
-  binding <- list(.goal002r_preflight_metric_at = function(...) {
-    stop("Preflight oracle failure at search fixture.", call. = FALSE)
-  })
-  rlang::local_bindings(!!!binding, .env = globalenv())
+testthat::test_that("one upstream oracle failure aborts bounded search", {
+  domain_audit <- goal002r_preflight_test_domain_starts()
+  failing <- domain_audit[1L, ]
+  bindings <- list(
+    goal002r_preflight_rule = function(order) order,
+    goal002r_preflight_reference_pair = function(a, sigma_alpha) {
+      if (a == failing$a && sigma_alpha == failing$sigma_alpha) {
+        stop("Oracle mode could not be bracketed.", call. = FALSE)
+      }
+      goal002r_preflight_test_pair()
+    },
+    goal002r_preflight_gh = function(...) {
+      c(log_m0 = -9, derivative_a = -1, derivative_sigma = 4)
+    }
+  )
+  rlang::local_bindings(!!!bindings, .env = globalenv())
   testthat::expect_error(
     goal002r_preflight_search_maxima(domain_audit),
-    "Preflight oracle failure at search fixture"
+    paste0(
+      "order 256.*target_error.*a=-7.*sigma_alpha=0.5.*",
+      "Oracle mode could not be bracketed"
+    ),
+    class = "goal002r_preflight_evaluator_error"
   )
+})
+
+testthat::test_that("one non-finite candidate aborts bounded search", {
+  domain_audit <- goal002r_preflight_test_domain_starts()
+  failing <- domain_audit[1L, ]
+  bindings <- list(
+    goal002r_preflight_rule = function(order) order,
+    goal002r_preflight_reference_pair = function(...) {
+      goal002r_preflight_test_pair()
+    },
+    goal002r_preflight_gh = function(a, sigma_alpha, rule) {
+      if (a == failing$a && sigma_alpha == failing$sigma_alpha) {
+        return(c(
+          log_m0 = Inf,
+          derivative_a = -1,
+          derivative_sigma = 4
+        ))
+      }
+      c(log_m0 = -9, derivative_a = -1, derivative_sigma = 4)
+    }
+  )
+  rlang::local_bindings(!!!bindings, .env = globalenv())
+  testthat::expect_error(
+    goal002r_preflight_search_maxima(domain_audit),
+    "order 256.*target_error.*a=-7.*sigma_alpha=0.5.*[Nn]on-finite",
+    class = "goal002r_preflight_evaluator_error"
+  )
+})
+
+testthat::test_that("twelve ordinary optimiser failures block one metric", {
+  calls <- 0L
+  bindings <- list(
+    goal002r_preflight_rule = function(order) order,
+    .goal002r_preflight_optim = function(...) {
+      calls <<- calls + 1L
+      stop("optimiser infrastructure failed", call. = FALSE)
+    }
+  )
+  rlang::local_bindings(!!!bindings, .env = globalenv())
+  testthat::expect_error(
+    goal002r_preflight_search_maxima(
+      goal002r_preflight_test_domain_starts()
+    ),
+    "All 12 maxima searches failed for order 256 and target_error"
+  )
+  testthat::expect_identical(calls, 12L)
 })
 
 testthat::test_that("criteria include searched peaks and locked gates", {
@@ -163,6 +446,101 @@ testthat::test_that("criteria include searched peaks and locked gates", {
   testthat::expect_identical(criteria$headroom_pass, c(TRUE, FALSE))
 })
 
+testthat::test_that("criteria apply exact full and headroom boundaries", {
+  audit <- goal002r_preflight_test_audit()
+
+  value_equal <- goal002r_preflight_criteria(
+    audit,
+    audit,
+    goal002r_preflight_test_maxima(target_error = 5e-4)
+  )
+  testthat::expect_true(all(value_equal$full_pass))
+  testthat::expect_false(any(value_equal$headroom_pass))
+
+  gradient_equal <- goal002r_preflight_criteria(
+    audit,
+    audit,
+    goal002r_preflight_test_maxima(scaled_a_error = 1e-2)
+  )
+  testthat::expect_false(any(gradient_equal$full_pass))
+
+  rms_equal_audit <- goal002r_preflight_test_audit(
+    scaled_a_error = 1e-3,
+    scaled_sigma_error = 1e-3,
+    scaled_log_sigma_error = 1e-3
+  )
+  rms_equal <- goal002r_preflight_criteria(
+    rms_equal_audit,
+    rms_equal_audit,
+    goal002r_preflight_test_maxima(
+      scaled_a_error = 1e-3,
+      scaled_sigma_error = 1e-3,
+      scaled_log_sigma_error = 1e-3
+    )
+  )
+  testthat::expect_equal(rms_equal$rms_gradient, rep(1e-3, 2L))
+  testthat::expect_false(any(rms_equal$full_pass))
+
+  headroom_audit <- goal002r_preflight_test_audit(
+    scaled_a_error = 5e-4,
+    scaled_sigma_error = 5e-4,
+    scaled_log_sigma_error = 5e-4
+  )
+  headroom_equal <- goal002r_preflight_criteria(
+    headroom_audit,
+    headroom_audit,
+    goal002r_preflight_test_maxima(
+      target_error = 2.5e-4,
+      scaled_a_error = 5e-3,
+      scaled_sigma_error = 5e-3,
+      scaled_log_sigma_error = 5e-3
+    )
+  )
+  testthat::expect_equal(
+    headroom_equal$maximum_target,
+    rep(2.5e-4, 2L)
+  )
+  testthat::expect_equal(
+    headroom_equal$maximum_gradient,
+    rep(5e-3, 2L)
+  )
+  testthat::expect_equal(
+    headroom_equal$rms_gradient,
+    rep(5e-4, 2L)
+  )
+  testthat::expect_true(all(headroom_equal$headroom_pass))
+})
+
+testthat::test_that("criteria require exact finite order and metric keys", {
+  audit <- goal002r_preflight_test_audit()
+  maxima <- goal002r_preflight_test_maxima()
+  malformed <- list(
+    dplyr::bind_rows(maxima, maxima[1L, ]),
+    maxima[-1L, ],
+    dplyr::mutate(maxima, order = dplyr::if_else(
+      dplyr::row_number() == 1L,
+      128L,
+      order
+    )),
+    dplyr::mutate(maxima, metric = dplyr::if_else(
+      dplyr::row_number() == 1L,
+      "wrong_metric",
+      metric
+    )),
+    dplyr::mutate(maxima, observed = dplyr::if_else(
+      dplyr::row_number() == 1L,
+      Inf,
+      observed
+    ))
+  )
+  for (fixture in malformed) {
+    testthat::expect_error(
+      goal002r_preflight_criteria(audit, audit, fixture),
+      "exactly one finite maximum per order and metric"
+    )
+  }
+})
+
 testthat::test_that("derivative states combine anchors and worst unique states", {
   anchors <- tibble::tribble(
     ~a, ~sigma_alpha,
@@ -172,20 +550,39 @@ testthat::test_that("derivative states combine anchors and worst unique states",
     10, 5.5,
      1, 2.75
   )
-  candidates <- tibble::tibble(
-    a = seq(-6, 6, length.out = 7L),
-    sigma_alpha = seq(0.5, 3.5, length.out = 7L),
-    target_error = 1:7
+  special <- tibble::tribble(
+    ~a, ~sigma_alpha, ~target_error, ~scaled_a_error,
+    ~scaled_sigma_error, ~scaled_log_sigma_error,
+    -6, 0.5, 100, 0, 0, 0,
+    -4, 1, 0, 90, 0, 0,
+    -2, 1.5, 0, 0, 80, 0,
+     0, 2, 0, 0, 0, 70,
+     2, 2.5, 60, 0, 0, 0
   )
-  audit <- dplyr::bind_rows(
-    dplyr::mutate(anchors, target_error = 100),
-    candidates
+  decoys <- tibble::tibble(
+    a = 3:7,
+    sigma_alpha = seq(3, 5, length.out = 5L),
+    target_error = c(50, 40, 30, 20, 10),
+    scaled_a_error = 0,
+    scaled_sigma_error = 0,
+    scaled_log_sigma_error = 0
+  )
+  candidates <- dplyr::bind_rows(special, decoys) |>
+    dplyr::mutate(candidate_id = dplyr::row_number())
+  audit <- tidyr::crossing(
+    order = c(256L, 512L),
+    candidate_id = candidates$candidate_id
   ) |>
-    dplyr::mutate(
-      scaled_a_error = 0,
-      scaled_sigma_error = 0,
-      scaled_log_sigma_error = 0
-    )
+    dplyr::left_join(candidates, by = "candidate_id") |>
+    dplyr::mutate(dplyr::across(
+      c(
+        target_error,
+        scaled_a_error,
+        scaled_sigma_error,
+        scaled_log_sigma_error
+      ),
+      ~ dplyr::if_else(order == 256L, .x, .x / 2)
+    ))
   states <- .goal002r_preflight_derivative_states(audit, audit)
   testthat::expect_identical(nrow(states), 10L)
   testthat::expect_identical(nrow(dplyr::distinct(states)), 10L)
@@ -193,56 +590,124 @@ testthat::test_that("derivative states combine anchors and worst unique states",
     dplyr::semi_join(anchors, states, by = names(anchors)),
     anchors
   )
-  testthat::expect_setequal(
-    states$a[!states$a %in% anchors$a],
-    c(-2, 0, 2, 4, 6)
+  testthat::expect_equal(
+    dplyr::semi_join(states, special, by = c("a", "sigma_alpha")),
+    dplyr::select(special, a, sigma_alpha)
   )
 })
 
 testthat::test_that("preflight run assembles the locked result schema", {
-  posterior_audit <- tibble::tibble(source = "posterior")
-  domain_audit <- tibble::tibble(source = "domain")
-  maxima <- tibble::tibble(marker = "maxima")
-  criteria <- tibble::tibble(marker = "criteria")
-  derivative_checks <- tibble::tibble(
-    check_type = rep("derivative", 20L),
-    passed = TRUE
-  )
-  bindings <- list(
-    goal002r_preflight_posterior_states = function() tibble::tibble(U = 1L),
-    goal002r_preflight_domain_grid = function() tibble::tibble(U = 29L),
-    goal002r_preflight_audit = function(states, source) {
-      if (source == "posterior") posterior_audit else domain_audit
-    },
-    goal002r_preflight_search_maxima = function(domain_audit) maxima,
-    goal002r_preflight_criteria = function(
-      posterior_audit,
-      domain_audit,
-      maxima
-    ) criteria,
-    goal002r_preflight_select = function(criteria) "SELECT_256",
-    goal002r_preflight_rule = function(order) order,
-    goal002r_preflight_rule_checks = function(rule, order) {
-      tibble::tibble(check_type = paste0("rule_", order), passed = TRUE)
-    },
-    goal002r_preflight_algebra_checks = function() {
-      tibble::tibble(check_type = "algebra", passed = TRUE)
-    },
-    .goal002r_preflight_derivative_states = function(...) {
-      tibble::tibble(a = seq_len(10L), sigma_alpha = 1)
-    },
-    goal002r_preflight_derivative_checks = function(states) derivative_checks
-  )
+  bindings <- goal002r_preflight_test_run_bindings()
   rlang::local_bindings(!!!bindings, .env = globalenv())
   result <- goal002r_preflight_run()
   testthat::expect_identical(names(result), c(
     "rule_integrity", "posterior_audit", "domain_audit", "maxima",
     "criteria", "decision"
   ))
-  testthat::expect_identical(result$posterior_audit, posterior_audit)
-  testthat::expect_identical(result$domain_audit, domain_audit)
-  testthat::expect_identical(result$maxima, maxima)
-  testthat::expect_identical(result$criteria, criteria)
+  testthat::expect_identical(
+    result$posterior_audit,
+    tibble::tibble(source = "posterior")
+  )
+  testthat::expect_identical(
+    result$domain_audit,
+    tibble::tibble(source = "domain")
+  )
+  testthat::expect_identical(result$maxima, tibble::tibble(marker = "maxima"))
+  testthat::expect_identical(
+    result$criteria,
+    tibble::tibble(marker = "criteria")
+  )
   testthat::expect_identical(result$decision, "SELECT_256")
-  testthat::expect_identical(nrow(result$rule_integrity), 23L)
+  testthat::expect_identical(nrow(result$rule_integrity), 42L)
+})
+
+testthat::test_that("locked rule and algebra integrity evidence validates", {
+  rule_checks <- .goal002r_preflight_rule_integrity()
+  algebra_checks <- .goal002r_preflight_algebra_integrity()
+  testthat::expect_identical(nrow(rule_checks), 18L)
+  testthat::expect_identical(nrow(algebra_checks), 4L)
+  testthat::expect_true(all(rule_checks$passed))
+  testthat::expect_true(all(algebra_checks$passed))
+})
+
+testthat::test_that("failed rule integrity stops before audit", {
+  rule_checks <- goal002r_preflight_test_rule_checks()
+  rule_checks$passed[1] <- FALSE
+  bindings <- goal002r_preflight_test_run_bindings(rule_checks = rule_checks)
+  bindings$goal002r_preflight_audit <- function(...) {
+    stop("expensive audit was called", call. = FALSE)
+  }
+  rlang::local_bindings(!!!bindings, .env = globalenv())
+  testthat::expect_error(
+    goal002r_preflight_run(),
+    "Preflight rule integrity checks failed"
+  )
+})
+
+testthat::test_that("failed algebra integrity stops before audit", {
+  algebra_checks <- goal002r_preflight_test_algebra_checks()
+  algebra_checks$passed[1] <- FALSE
+  bindings <- goal002r_preflight_test_run_bindings(
+    algebra_checks = algebra_checks
+  )
+  bindings$goal002r_preflight_audit <- function(...) {
+    stop("expensive audit was called", call. = FALSE)
+  }
+  rlang::local_bindings(!!!bindings, .env = globalenv())
+  testthat::expect_error(
+    goal002r_preflight_run(),
+    "Preflight algebra integrity checks failed"
+  )
+})
+
+testthat::test_that("missing rule integrity evidence stops before audit", {
+  rule_checks <- goal002r_preflight_test_rule_checks()[-1L, ]
+  bindings <- goal002r_preflight_test_run_bindings(rule_checks = rule_checks)
+  bindings$goal002r_preflight_audit <- function(...) {
+    stop("expensive audit was called", call. = FALSE)
+  }
+  rlang::local_bindings(!!!bindings, .env = globalenv())
+  testthat::expect_error(
+    goal002r_preflight_run(),
+    "Preflight rule integrity checks failed"
+  )
+})
+
+testthat::test_that("NA rule integrity evidence stops before audit", {
+  rule_checks <- goal002r_preflight_test_rule_checks()
+  rule_checks$passed[1] <- NA
+  bindings <- goal002r_preflight_test_run_bindings(rule_checks = rule_checks)
+  bindings$goal002r_preflight_audit <- function(...) {
+    stop("expensive audit was called", call. = FALSE)
+  }
+  rlang::local_bindings(!!!bindings, .env = globalenv())
+  testthat::expect_error(
+    goal002r_preflight_run(),
+    "Preflight rule integrity checks failed"
+  )
+})
+
+testthat::test_that("NA rule labels stop before audit", {
+  rule_checks <- goal002r_preflight_test_rule_checks()
+  rule_checks$check[1] <- NA_character_
+  bindings <- goal002r_preflight_test_run_bindings(rule_checks = rule_checks)
+  bindings$goal002r_preflight_audit <- function(...) {
+    stop("expensive audit was called", call. = FALSE)
+  }
+  rlang::local_bindings(!!!bindings, .env = globalenv())
+  testthat::expect_error(
+    goal002r_preflight_run(),
+    "Preflight rule integrity checks failed"
+  )
+})
+
+testthat::test_that("failed derivative integrity prevents selection", {
+  bindings <- goal002r_preflight_test_run_bindings(
+    derivative_passed = c(FALSE, rep(TRUE, 19L))
+  )
+  rlang::local_bindings(!!!bindings, .env = globalenv())
+  testthat::expect_error(
+    goal002r_preflight_run(),
+    "Preflight derivative sanity checks failed"
+  )
 })
