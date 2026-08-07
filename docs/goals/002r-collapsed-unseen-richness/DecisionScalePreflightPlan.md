@@ -30,13 +30,20 @@ compilation.
 - Require \(U|\Delta\log m_0|\le5\times10^{-4}\).
 - Require maximum scaled gradient discrepancy below \(10^{-2}\) and pooled
   RMS below \(10^{-3}\).
+- Require strict/loose value agreement at most \(10^{-8}\); require both mixed
+  derivative agreement and decision-scaled reference uncertainty at most
+  \(10^{-4}\).
 - Select order 256 only with twofold headroom on every decision-scale limit;
   otherwise select order 512 only if it passes the full limits.
 - If neither order passes, return `CLOSE`; do not test another order or
   algorithm.
 - Keep generated evidence under ignored
   `outputs/goal002r/decision-scale-preflight/`.
-- Use one focused review and one repair pass only for a demonstrated defect.
+- Use one focused task-scoped review of the amended Task 2 implementation; do
+  not authorise a second scientific oracle-repair attempt.
+- Treat ordinary TDD failures as coding work. Execute the completed Task 2
+  oracle precheck as the single scientific oracle-repair attempt; a bounded
+  failure records `CLOSE` before Tasks 3--4.
 - Do not begin a paired fit, ecological-model extension, or empirical analysis
   in this tranche.
 
@@ -150,8 +157,8 @@ goal002r_preflight_contract <- function() {
     max_unseen = 29L,
     search_starts = 12L,
     reference_tolerances = c(1e-10, 1e-12),
-    reference_agreement = 1e-8,
-    finite_difference_tolerance = 1e-5,
+    reference_value_agreement = 1e-8,
+    derivative_agreement = 1e-5,
     value_gate = 5e-4,
     gradient_max_gate = 1e-2,
     gradient_rms_gate = 1e-3,
@@ -359,6 +366,7 @@ remains blocked until this amended task is implemented and reviewed.
   - `goal002r_preflight_reference(a, sigma_alpha, rel_tol) -> named numeric`
   - `goal002r_preflight_reference_pair(a, sigma_alpha) -> named numeric`
   - `goal002r_preflight_derivative_checks(states) -> tibble`
+  - `goal002r_preflight_reference_precheck() -> tibble`
 
 - [ ] **Step 1: Freeze the repaired oracle contract and write failing
   regressions**
@@ -372,6 +380,10 @@ tail_initial_scales = 8
 tail_max_expansions = 20L
 tail_relative_bound = 1e-14
 tail_stability = 1e-9
+richardson_max_halvings = 8L
+richardson_convergence = 2.5e-6
+reference_relative_slope = 1e-10
+reference_scaled_uncertainty = 1e-4
 ```
 
 Add regressions for the exact states `(10, 5.5 / 60)`, `(10, 0.55)`, and
@@ -386,11 +398,12 @@ c(
 ```
 
 within `5e-6`. The second must return finite values at both locked tolerances.
-Both non-zero states must have all three strict/loose agreements at most
-`1e-8`, maximum certified relative tail bound at most `1e-14`, and maximum
-post-expansion output change at most `1e-9`. The zero state must equal
-`c(-exp(10), -exp(10), 0)` in the same output order, report the exact sigma
-derivative, and satisfy the evenness check in Step 4.
+Both non-zero states must have value strict/loose agreement at most `1e-8`;
+both derivative mixed and decision-scaled agreements from Step 5 must pass;
+the maximum certified relative tail bound must be at most `1e-14`; and the
+maximum post-expansion output change must be at most `1e-9`. The zero state
+must equal `c(-exp(10), -exp(10), 0)` in the same output order, report the exact
+sigma derivative, and satisfy the evenness check in Step 4.
 
 - [ ] **Step 2: Run the focused test and verify RED**
 
@@ -462,24 +475,52 @@ c(
 
 Handle `sigma_alpha == 0` with the exact candidate expression. In
 `goal002r_preflight_reference_pair()`, run the oracle at `1e-10` and `1e-12`,
-retain the strict result, and append the three absolute agreements, maximum
-certified relative tail bound, maximum post-expansion output change, and the
-maximum number of tail expansions used. The implementation must remain
-independent of the Gauss--Hermite nodes, weights, and candidate sums.
+retain the strict result, and append the raw value and derivative absolute
+differences, both derivative mixed limits and pass flags, both
+decision-scaled derivative uncertainties and pass flags, maximum certified
+relative tail bound, maximum post-expansion output change, and the maximum
+number of tail expansions used. The implementation must remain independent of
+the Gauss--Hermite nodes, weights, and candidate sums.
 
 - [ ] **Step 4: Replace the invalid sigma-boundary quotient**
 
-For positive `sigma_alpha`, retain central differences with `h_a = 1e-5` and
-`h_sigma = max(1e-5, sigma_alpha * 1e-5)`. At `sigma_alpha == 0`, do not use a
-forward quotient. The boundary row instead passes only if the analytic sigma
-derivative is exactly zero and a private signed-sigma evaluation satisfies
+For each positive-`sigma_alpha` state and each parameter, freeze the initial
+steps at `h_a = 1e-5` and
+`h_sigma = max(1e-5, sigma_alpha * 1e-5)`. For `j = 0, ..., 8`, define
+
+```r
+h[j + 1L] <- h_initial / 2^j
+D[j + 1L] <- (
+  value(theta + h[j + 1L]) - value(theta - h[j + 1L])
+) / (2 * h[j + 1L])
+```
+
+and for `j = 0, ..., 7` define the fourth-order Richardson estimate
+
+```r
+R[j + 1L] <- (4 * D[j + 2L] - D[j + 1L]) / 3
+```
+
+Starting with the second Richardson estimate, accept the first successive
+pair satisfying `abs(R[j + 1L] - R[j]) <= 2.5e-6`. This schedule permits at
+most eight halvings from the frozen initial step. If no successive pair
+converges, the diagnostic fails. Otherwise require the analytic derivative to
+agree with the accepted Richardson estimate within the existing `1e-5`
+absolute threshold.
+Use the private continuous oracle outside a protected-domain boundary when a
+centred point requires it; this does not enlarge the public audit domain.
+
+At `sigma_alpha == 0`, do not run Richardson extrapolation or use a forward
+quotient. The boundary row instead passes only if the analytic sigma derivative
+is exactly zero and a private signed-sigma evaluation satisfies
 
 ```r
 abs(log_m0(a, 1e-5) - log_m0(a, -1e-5)) <= 1e-12
 ```
 
 The signed evaluation is diagnostic only; the public protected domain remains
-non-negative. Test at least:
+non-negative. Test the existing ordinary states and the five locked difficult
+states:
 
 ```r
 tibble::tribble(
@@ -487,14 +528,20 @@ tibble::tribble(
   -8, 5.5,
    0, 2.75,
   10, 5.5,
-  10, 0
+  10, 0,
+  10.0, 5.5 / 60,
+   9.7, 5.5 / 60,
+   9.4, 5.5 / 60,
+   9.1, 5.5 / 60,
+   8.8, 5.5 / 60
 )
 ```
 
 Return one `a` row and one `sigma_alpha` row per state. Label the boundary
-sigma row `exact_evenness`, rather than `finite_difference`, while retaining a
-common `observed`, `threshold`, and `passed` schema. Positive-sigma derivative
-differences must agree within `1e-5`.
+sigma row `exact_evenness`, rather than `richardson`, while retaining a common
+`observed`, `threshold`, `refinements`, `converged`, and `passed` schema. Every
+positive-sigma regression must converge within eight halvings and agree with
+the analytic derivative within `1e-5` before it can enter `rule_integrity`.
 
 - [ ] **Step 5: Add expansion and exhaustive grid prechecks**
 
@@ -504,20 +551,46 @@ narrow two-local-scale initial interval. Require at least one expansion, the
 within `1e-9` for all three outputs. This is a regression of the frozen
 expansion rule, not permission to tune it during the preflight.
 
-Then evaluate `goal002r_preflight_reference_pair()` at every state from:
+Implement `goal002r_preflight_reference_precheck()` to evaluate
+`goal002r_preflight_reference_pair()` at the union of every grid state and the
+locked near-zero strip:
 
 ```r
-tidyr::crossing(
-  a = seq(-8, 10, length.out = 61L),
-  sigma_alpha = seq(0, 5.5, length.out = 61L)
-)
+dplyr::bind_rows(
+  tidyr::crossing(
+    a = seq(-8, 10, length.out = 61L),
+    sigma_alpha = seq(0, 5.5, length.out = 61L)
+  ),
+  tibble::tibble(
+    a = 10,
+    sigma_alpha = c(1e-2, 1e-3, 1e-4, 1e-5, 1e-6)
+  )
+) |>
+  dplyr::distinct(a, sigma_alpha)
 ```
 
-Require exactly 3,721 completed states, finite returned values, maximum
-strict/loose agreement at most `1e-8`, maximum certified relative tail bound at
-most `1e-14`, and maximum post-expansion change at most `1e-9`. This finite
-oracle precheck must pass and be recorded in the Task 2 report before any Task
-3 code is started.
+Require exactly 3,726 completed states and finite returned values. Let the
+strict result be the `1e-12` result and define the raw strict/loose differences
+`delta_value`, `delta_a`, and `delta_sigma`. Every state must satisfy all of:
+
+```r
+delta_value <= 1e-8
+delta_a <= 1e-8 + 1e-10 * abs(strict_derivative_a)
+delta_sigma <= 1e-8 + 1e-10 * abs(strict_derivative_sigma)
+max_unseen * 1.5 * delta_a <= 1e-4
+max_unseen * max(0.85, 1.2 * sigma_alpha) * delta_sigma <= 1e-4
+maximum_tail_relative_bound <= 1e-14
+maximum_expansion_change <= 1e-9
+```
+
+The mixed derivative tests accommodate derivative scale but do not stand
+alone: the decision-scaled uncertainty tests are also mandatory. Their `1e-4`
+limit is one tenth of the `1e-3` downstream RMS gradient gate and one
+hundredth of the `1e-2` maximum-component gate. Do not add an asymptotic or
+switching evaluator. Unit-test the state-set construction and criteria on
+small fixtures during TDD; reserve evaluation of the complete 3,726-state set
+for the single Step 6 scientific attempt. The complete precheck must pass and
+be recorded in the Task 2 report before any Task 3 code is started.
 
 - [ ] **Step 6: Verify Task 2 and commit**
 
@@ -531,6 +604,7 @@ Rscript -e 'testthat::test_dir(
   stop_on_failure = TRUE,
   stop_on_warning = TRUE
 )'
+Rscript scripts/run_tests.R
 git diff --check
 git add R/goal002r/preflight_math.R \
   tests/testthat/test-goal002r-preflight-math.R
@@ -538,17 +612,48 @@ git commit -m "fix: repair Goal002R preflight reference oracle"
 ```
 
 Expected: all math tests, the exact regressions, the forced-expansion check,
-and the 3,721-state oracle precheck pass. If any bounded oracle criterion
-fails, stop with an error. Do not try another range, tolerance, or algorithm;
-after the one authorised repair pass is exhausted, record `CLOSE`.
+and ordinary fixture-level derivative tests pass. Repair ordinary coding,
+interface, or test defects within this TDD cycle; these do not consume a
+scientific attempt. Once focused and full tests are green, execute the complete
+3,726-state precheck from the committed implementation exactly once:
+
+```sh
+Rscript -e '
+  source(file.path("scripts", "source_goal002r.R"))
+  source_goal002r(".")
+  result <- goal002r_preflight_reference_precheck()
+  stopifnot(nrow(result) == 3726L, all(result$passed))
+  cat("passed states:", nrow(result), "\n")
+'
+```
+
+That execution is the single authorised scientific oracle-repair attempt.
+
+If the fully implemented bounded oracle or any mandatory precheck criterion
+fails, Task 3 and Task 4 do not start. Set the Design status to
+`completed — CLOSE`, append a dated `## Preflight closure` section with the
+first failing state, criterion, observed value, and threshold, and write only
+the ignored
+`outputs/goal002r/decision-scale-preflight/decision.txt` containing:
+
+```text
+CLOSE
+date: YYYY-MM-DD
+stage: Task 2 oracle precheck
+reason: <state; criterion; observed; threshold>
+```
+
+Do not create the four CSVs or a writer, and do not try another range,
+tolerance, domain, diagnostic, or algorithm. If the complete precheck passes,
+record its summary in the Task 2 report and unlock Task 3.
 
 ---
 
 ## Task 3: Implement deterministic audits, maxima search, and selection
 
 **Precondition:** do not start this task until the amended Task 2 regressions,
-forced-expansion check, all-3,721-state oracle precheck, and task-scoped review
-have passed.
+forced-expansion check, complete 3,726-state oracle precheck, and task-scoped
+review have passed.
 
 **Files:**
 
@@ -655,8 +760,11 @@ testthat::test_that("audit reports both orders and scaled discrepancies", {
   testthat::expect_setequal(unique(audit$order), c(256L, 512L))
   testthat::expect_true(all(c(
     "target_error", "scaled_a_error", "scaled_sigma_error",
-    "scaled_log_sigma_error", "reference_agreement",
-    "tail_relative_bound", "expansion_change"
+    "scaled_log_sigma_error", "value_agreement",
+    "derivative_a_mixed_pass", "derivative_sigma_mixed_pass",
+    "scaled_reference_a_uncertainty",
+    "scaled_reference_sigma_uncertainty", "tail_relative_bound",
+    "expansion_change"
   ) %in% names(audit)))
   numeric <- audit[vapply(audit, is.numeric, logical(1))]
   testthat::expect_true(all(is.finite(unlist(numeric))))
@@ -698,18 +806,27 @@ scaled_sigma_error <- 0.85 * U *
   abs(candidate_derivative_sigma - reference_derivative_sigma)
 scaled_log_sigma_error <- 1.2 * U * sigma_alpha *
   abs(candidate_derivative_sigma - reference_derivative_sigma)
-reference_agreement <- max(
-  value_agreement,
-  derivative_a_agreement,
-  derivative_sigma_agreement
-)
+derivative_a_mixed_limit <- 1e-8 +
+  1e-10 * abs(reference_derivative_a)
+derivative_sigma_mixed_limit <- 1e-8 +
+  1e-10 * abs(reference_derivative_sigma)
+derivative_a_mixed_pass <- derivative_a_agreement <=
+  derivative_a_mixed_limit
+derivative_sigma_mixed_pass <- derivative_sigma_agreement <=
+  derivative_sigma_mixed_limit
+scaled_reference_a_uncertainty <- max_unseen * 1.5 *
+  derivative_a_agreement
+scaled_reference_sigma_uncertainty <- max_unseen *
+  max(0.85, 1.2 * sigma_alpha) * derivative_sigma_agreement
 tail_relative_bound <- maximum_tail_relative_bound
 expansion_change <- maximum_expansion_change
 ```
 
 Keep one row per order and state. Any non-finite result stops with a concise
 state identifier. A tail bound above `1e-14` or expansion change above `1e-9`
-is also an oracle failure, not a candidate discrepancy.
+is also an oracle failure, not a candidate discrepancy. So are value agreement
+above `1e-8`, either failed mixed derivative test, or either decision-scaled
+reference uncertainty above `1e-4`.
 
 - [ ] **Step 6: Implement bounded maxima search**
 
@@ -744,10 +861,21 @@ rms_gradient <- sqrt(mean(c(
   scaled_sigma_error,
   scaled_log_sigma_error
 )^2))
+maximum_value_agreement <- max(value_agreement)
+all_reference_derivative_mixed_pass <- all(
+  derivative_a_mixed_pass,
+  derivative_sigma_mixed_pass
+)
+maximum_scaled_reference_uncertainty <- max(
+  scaled_reference_a_uncertainty,
+  scaled_reference_sigma_uncertainty
+)
 full_pass <- maximum_target <= 5e-4 &&
   maximum_gradient < 1e-2 &&
   rms_gradient < 1e-3 &&
-  maximum_reference_agreement <= 1e-8 &&
+  maximum_value_agreement <= 1e-8 &&
+  all_reference_derivative_mixed_pass &&
+  maximum_scaled_reference_uncertainty <= 1e-4 &&
   maximum_tail_relative_bound <= 1e-14 &&
   maximum_expansion_change <= 1e-9
 headroom_pass <- full_pass &&
@@ -764,9 +892,11 @@ For the derivative sanity check, combine the four domain corners, the domain
 centre, and the five unique states with the largest per-state maximum across
 all value and gradient discrepancies. Run
 `goal002r_preflight_derivative_checks()` on those ten states, yielding exactly
-20 rows. Use central differences only when `sigma_alpha > 0`. Each
+20 rows. Use the frozen Richardson-controlled central-difference procedure
+only when `sigma_alpha > 0`; every such row must converge within eight
+halvings before applying the `1e-5` analytic agreement threshold. Each
 `sigma_alpha == 0` row instead checks the exact zero analytic derivative and
-the `1e-12` evenness identity; it must not contain a forward quotient.
+the `1e-12` evenness identity; it must not contain a quotient.
 
 `goal002r_preflight_run()` assembles:
 
@@ -923,13 +1053,15 @@ Expected output structure:
 - 1,500 posterior-audit rows: 750 states times two orders;
 - 7,442 domain-audit rows: 3,721 states times two orders;
 - eight maximum-search rows;
-- finite reference agreements no greater than \(10^{-8}\); and
+- value reference agreements no greater than \(10^{-8}\), passing mixed
+  derivative agreements, and decision-scaled reference uncertainties no
+  greater than \(10^{-4}\); and
 - exactly one of `SELECT_256`, `SELECT_512`, or `CLOSE`.
 
-If an implementation defect stops the run, repair it once, remove only
-`outputs/goal002r/decision-scale-preflight/`, rerun the affected focused tests
-and full suite, then execute once more. Do not change the domain, orders, or
-thresholds.
+Task 4 has no implementation-repair or rerun authority. Ordinary coding and
+test defects must have been resolved before Step 6. Execute the scientific run
+once; an unexpected stop is returned for PI assessment without changing or
+rerunning the algorithm, tolerances, domain, diagnostics, or orders.
 
 - [ ] **Step 7: Perform one focused reconciliation**
 
@@ -942,6 +1074,7 @@ Rscript -e '
   p <- read.csv(file.path(root, "posterior-state-audit.csv"))
   d <- read.csv(file.path(root, "domain-audit.csv"))
   m <- read.csv(file.path(root, "numerical-maxima.csv"))
+  audit <- rbind(p, d)
   stopifnot(
     nrow(p) == 1500L,
     nrow(d) == 7442L,
@@ -949,7 +1082,12 @@ Rscript -e '
     setequal(unique(p$order), c(256L, 512L)),
     setequal(unique(d$order), c(256L, 512L)),
     all(is.finite(unlist(p[vapply(p, is.numeric, logical(1))]))),
-    all(is.finite(unlist(d[vapply(d, is.numeric, logical(1))])))
+    all(is.finite(unlist(d[vapply(d, is.numeric, logical(1))]))),
+    all(audit$value_agreement <= 1e-8),
+    all(audit$derivative_a_mixed_pass),
+    all(audit$derivative_sigma_mixed_pass),
+    all(audit$scaled_reference_a_uncertainty <= 1e-4),
+    all(audit$scaled_reference_sigma_uncertainty <= 1e-4)
   )
 '
 ```
@@ -965,7 +1103,8 @@ Append a concise `## Preflight result` section to
 
 - the selected decision;
 - order-level maximum target error, maximum scaled gradient error, RMS
-  gradient error, and maximum reference disagreement;
+  gradient error, maximum value reference disagreement, maximum
+  decision-scaled reference uncertainty, and mixed-derivative status;
 - rule/algebra/derivative-diagnostic status; and
 - the authorised next step or closure statement.
 

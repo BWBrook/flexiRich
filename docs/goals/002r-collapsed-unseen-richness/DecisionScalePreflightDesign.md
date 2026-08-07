@@ -162,12 +162,30 @@ subtracted.
 
 After the tail criterion first passes, one further doubling of every
 unbounded endpoint is mandatory. The value and both derivative outputs must
-change by at most $10^{-9}$, giving tenfold headroom on the $10^{-8}$
-strict/loose reference-agreement requirement. Reference calculations must be
-finite and must also agree between integration tolerances $10^{-10}$ and
-$10^{-12}$ to $10^{-8}$ for the value and both derivatives. Failure to bracket
-a mode, meet the tail bound within 20 expansions, complete an integration, or
-meet either stability check is an oracle error; it does not authorise another
+change by at most $10^{-9}$. Reference calculations must be finite and must
+also agree between integration tolerances $10^{-10}$ and $10^{-12}$. The value
+agreement must be at most $10^{-8}$. For each primitive derivative $d$, both of
+the following must hold:
+
+\[
+|d_{10^{-12}}-d_{10^{-10}}|
+\le 10^{-8}+10^{-10}|d_{10^{-12}}|,
+\]
+
+and the decision-scaled uncertainty must be at most $10^{-4}$, using
+
+\[
+29(1.5)|\Delta d_a|,
+\qquad
+29\max(0.85,1.2\sigma_\alpha)|\Delta d_\sigma|.
+\]
+
+The $10^{-4}$ limit is one tenth of the downstream RMS gradient gate and one
+hundredth of the downstream maximum-component gate. It prevents scale-driven
+false failures while keeping oracle uncertainty negligible at the scientific
+decision boundary. Failure to bracket a mode, meet the tail bound within 20
+expansions, complete an integration, or meet either stability check is an
+oracle error; it does not authorise an asymptotic evaluator, switch, or another
 range, tolerance, or algorithm.
 
 Three regression states are mandatory:
@@ -177,18 +195,32 @@ Three regression states are mandatory:
   $(\log m_0,\partial_a\log m_0,\partial_\sigma\log m_0)$ within $5\times
   10^{-6}$ and pass the tail and expansion checks;
 - $(10,0.55)$ must be finite at both locked tolerances and pass the same tail,
-  expansion, and strict/loose checks; and
+  expansion, mixed, decision-scaled, and strict/loose checks; and
 - $(10,0)$ must equal $(-\exp(10),-\exp(10),0)$, use the exact zero derivative,
   and satisfy the evenness identity $\log m_0(a,h)=\log m_0(a,-h)$ to
   $10^{-12}$ for $h=10^{-5}$. No forward quotient is used at this boundary.
 
-Central finite differences at positive $\sigma_\alpha$ states provide the
-independent derivative sanity check with absolute agreement at most $10^{-5}$.
-At $\sigma_\alpha=0$, the check is instead the exact zero derivative plus the
+At positive $\sigma_\alpha$, derivative sanity checks use deterministic
+Richardson-controlled central differences. Starting steps are fixed at
+$h_a=10^{-5}$ and $h_\sigma=\max(10^{-5},10^{-5}\sigma_\alpha)$. At each level,
+form centred estimates at $h$ and $h/2$ and the fourth-order extrapolation
+$R(h)=\{4D(h/2)-D(h)\}/3$. Halve at most eight times in total and accept the
+first pair of successive Richardson estimates that agrees within
+$2.5\times10^{-6}$; the analytic derivative must then agree with the accepted
+extrapolation within $10^{-5}$. Failure to converge within the frozen limit is
+a diagnostic failure, not permission to relax a step or threshold. The five
+high-$a$ states $(10,5.5/60)$, $(9.7,5.5/60)$, $(9.4,5.5/60)$,
+$(9.1,5.5/60)$, and $(8.8,5.5/60)$ are locked derivative regressions.
+
+At $\sigma_\alpha=0$, the check remains the exact zero derivative plus the
 evenness identity above. Before Task 3 begins, the repaired oracle must finish
-a finite precheck of all $61\times61$ protected-grid states: every result must
-be finite, every primitive must meet the tail and expansion criteria, and all
-three strict/loose agreements must be at most $10^{-8}$.
+a finite precheck of all $61\times61$ protected-grid states and the additional
+high-$a$ near-zero strip
+$(10,\sigma_\alpha)$ for
+$\sigma_\alpha\in\{10^{-2},10^{-3},10^{-4},10^{-5},10^{-6}\}$. Every result
+must be finite; every primitive must meet the tail and expansion criteria; the
+value, mixed derivative, and decision-scaled strict/loose criteria must all
+pass.
 
 ## Decision-scale gates
 
@@ -321,17 +353,34 @@ confirmation fit.
 
 ## Stopping rule
 
-Perform one focused review and repair only a demonstrated implementation
-defect. Stop after the preflight decision and return it for PI assessment.
+Ordinary coding, test, and interface failures found while implementing the
+frozen contract are repaired within the Task 2 TDD cycle. They are not
+scientific outcomes and do not consume the oracle-repair attempt. The single
+authorised scientific oracle-repair attempt begins only when the bounded
+oracle is fully implemented and the mandatory Task 2 prechecks are executed.
+
+If that completed oracle or any mandatory Task 2 precheck fails a frozen mode,
+tail, expansion, finiteness, regression, Richardson, mixed-agreement, or
+decision-scaled criterion, Task 3 and Task 4 do not start. Without adding a
+writer implementation, the Task 2 worker must:
+
+1. set this document's status to `completed — CLOSE` and append a dated
+   `## Preflight closure` section naming the first failing state, criterion,
+   observed value, and threshold; and
+2. write only
+   `outputs/goal002r/decision-scale-preflight/decision.txt` with `CLOSE`, the
+   date, `stage: Task 2 oracle precheck`, and the same concise reason.
+
+The output is ignored and no CSV evidence is fabricated. There is no second
+scientific oracle-repair attempt and no algorithm, tolerance, domain, or
+diagnostic search. If Task 2 passes, proceed through Tasks 3 and 4 once, stop
+after the preflight decision, and return it for PI assessment.
 
 - `SELECT_256` or `SELECT_512` authorises planning the separately versioned
   paired experiment above; it does not retain the scientific model.
 - `CLOSE` ends Goal 002R computational repair.
-- A rule-generation or oracle failure is reported as an implementation
-  blocker and may receive the one authorised repair pass. If that bounded pass
-  cannot satisfy the frozen criteria, the preflight returns `CLOSE`; it does
-  not search another range, tolerance, or algorithm. This is not evidence
-  against the ecological model.
+- A terminal bounded-oracle failure is recorded by the Task 2 closure path
+  above. It is not evidence against the ecological model.
 
 No empirical analysis, broader calibration, new integrator search, or
 ecological model extension begins in this tranche.
