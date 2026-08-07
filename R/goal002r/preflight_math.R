@@ -56,11 +56,17 @@ goal002r_preflight_contract <- function() {
   log(abs(current)) + log_scale
 }
 
-goal002r_preflight_rule <- function(order) {
-  order <- as.integer(.goal002r_scalar(order, "order", lower = 1))
-  if (!order %in% goal002r_preflight_contract()$orders) {
+.goal002r_preflight_order <- function(order) {
+  order <- .goal002r_scalar(order, "order", lower = 1)
+  if (order != trunc(order) ||
+      !order %in% goal002r_preflight_contract()$orders) {
     .goal002r_stop("Preflight order must be exactly 256 or 512.")
   }
+  as.integer(order)
+}
+
+goal002r_preflight_rule <- function(order) {
+  order <- .goal002r_preflight_order(order)
   jacobi <- matrix(0, nrow = order, ncol = order)
   off_diagonal <- sqrt(seq_len(order - 1L))
   jacobi[cbind(seq_len(order - 1L), seq_len(order - 1L) + 1L)] <-
@@ -84,7 +90,7 @@ goal002r_preflight_rule <- function(order) {
 }
 
 goal002r_preflight_rule_checks <- function(rule, order) {
-  order <- as.integer(.goal002r_scalar(order, "order", lower = 1))
+  order <- .goal002r_preflight_order(order)
   expected_moments <- c(`0` = 1, `2` = 1, `4` = 3, `6` = 15, `8` = 105, `10` = 945)
   weights <- exp(rule$log_weight)
   moments <- vapply(
@@ -115,11 +121,18 @@ goal002r_preflight_rule_checks <- function(rule, order) {
 }
 
 goal002r_preflight_gh <- function(a, sigma_alpha, rule) {
-  a <- .goal002r_scalar(a, "a")
+  contract <- goal002r_preflight_contract()
+  a <- .goal002r_scalar(
+    a,
+    "a",
+    lower = contract$a_bounds[1],
+    upper = contract$a_bounds[2]
+  )
   sigma_alpha <- .goal002r_scalar(
     sigma_alpha,
     "sigma_alpha",
-    lower = 0
+    lower = contract$sigma_bounds[1],
+    upper = contract$sigma_bounds[2]
   )
   if (sigma_alpha == 0) {
     value <- -exp(a)
