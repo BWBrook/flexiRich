@@ -1,6 +1,6 @@
 # Goal 002R Oracle-Stability Adjudication
 
-Status: designed — not authorised for execution
+Status: completed — outcome C / `CLOSE`; no rerun
 Version: 2 — independent-review repair
 Date: 2026-08-09
 
@@ -579,3 +579,29 @@ No manifest, plot, rendered report, or session dump is needed.
 This is the complete adjudication tranche. Any request to broaden the state
 set, change numerical controls, or resolve an inconclusive result is a new
 scientific decision and is not authorised here.
+
+## Adjudication result
+
+Executed: 2026-08-09 07:17:37 UTC
+
+Git HEAD: `26d6fd8b527d1bcc98a33ba18a828dfe96ca007d`
+
+The single authorised Version 2 execution passed `X01_output_absent`,
+`X02_sources_committed_clean`, and `X03_provenance_available`, but failed
+`X04_in_memory_schema`. Under the frozen decision tree, this is outcome C:
+inconclusive, `CLOSE`, with no rerun of either this diagnostic or the full
+preflight. Decision-only publication passed `X05_evidence_publish`.
+
+The final output directory contains only `decision.txt`; neither CSV evidence
+table was published, and no staging directory remains. Consequently, the run
+does not identify which composite X04 requirement failed and supplies no
+validated numerical evidence for `S01`--`S11`. It cannot establish that the
+endpoint discrepancy is decision-negligible, support oracle instability,
+amend the numerical contract, select a candidate order, or alter the existing
+order-128 `REJECT` and stopped-preflight findings.
+
+Any attempt to resolve the X04 failure would require a newly designed and
+authorised scientific tranche, not a rerun of Version 2.
+
+Decision SHA-256:
+`f41cf0c1ec002f8c27b33323da589402e1f22900c099b5d4316e37cd6c1f9846`
