@@ -11,10 +11,13 @@ if (length(script_arg) != 1L) {
 }
 script_path <- normalizePath(sub("^--file=", "", script_arg), mustWork = TRUE)
 project_root <- normalizePath(file.path(dirname(script_path), ".."), mustWork = TRUE)
-
-source(file.path(project_root, "R", "goal002r", "config.R"), local = .GlobalEnv)
-source(file.path(project_root, "R", "goal002r", "math.R"), local = .GlobalEnv)
-source(file.path(project_root, "R", "goal002r", "preflight_math.R"), local = .GlobalEnv)
+expected_script_path <- normalizePath(
+  file.path(project_root, "scripts", "run_goal002r_oracle_stability_adjudication.R"),
+  mustWork = FALSE
+)
+if (!identical(script_path, expected_script_path)) {
+  stop("The adjudication runner must be executed from its committed project path.", call. = FALSE)
+}
 
 ## The only numerical failures that may be classified as oracle
 ## certification failures.  Everything else remains an implementation failure.
@@ -493,6 +496,7 @@ make_signed_summary <- function(primitives, rel_tol, coverage) {
   kappa <- (p_value + n_value) / abs(p_value - n_value)
   list(
     row_type = "signed_summary", rel_tol = rel_tol, coverage = coverage, j = NA_integer_,
+    rho = NA_real_,
     log_m0 = combined$values[["log_m0"]], b_D = envelope_log_value(denominator),
     derivative_a = d_a, derivative_sigma = d_sigma, P = p_value, N = n_value,
     kappa_cancel = kappa, lost_decimal_digits = log10(kappa),
@@ -577,7 +581,8 @@ richardson_sequence <- function(a, sigma_alpha, rel_tol, coverage) {
 
 derivative_table_for <- function(summaries, sequences) {
   rows <- c(summaries, unlist(lapply(sequences, `[[`, "rows"), recursive = FALSE))
-  table <- as.data.frame(do.call(rbind, lapply(rows, as.data.frame)),
+  padded_rows <- lapply(rows, pad_row_to_schema, columns = expected_derivative_columns)
+  table <- as.data.frame(do.call(rbind, lapply(padded_rows, as.data.frame)),
                          stringsAsFactors = FALSE)
   row_type_order <- c("signed_summary", "richardson")
   table <- table[order(
@@ -608,6 +613,12 @@ expected_derivative_columns <- c(
   "agreement_abs", "agreement_scaled"
 )
 
+pad_row_to_schema <- function(row, columns) {
+  missing <- setdiff(columns, names(row))
+  for (name in missing) row[[name]] <- NA
+  row[columns]
+}
+
 as_complete_derivative_table <- function(summaries, sequences) {
   accepted_info <- lapply(sequences, function(sequence) {
     index <- sequence$accepted_index
@@ -622,6 +633,7 @@ as_complete_derivative_table <- function(summaries, sequences) {
     summary$accepted_h_fine <- accepted$h
     summary$accepted_R <- accepted$R
     summary$accepted_B_R <- accepted$B
+    summary$rho <- accepted$rho
     summary$agreement_abs <- if (is.finite(accepted$R))
       abs(summary$derivative_sigma - accepted$R) else NA_real_
     summary$agreement_scaled <- if (is.finite(accepted$R))
@@ -641,23 +653,69 @@ validate_tables <- function(primitive_table, derivative_table) {
       nrow(primitive_table) != 24L ||
       !identical(names(derivative_table), expected_derivative_columns) ||
       nrow(derivative_table) != 54L) return(FALSE)
-  primitive_order_index <- order(
-    match(primitive_table$rel_tol, rel_tolerances),
-    match(primitive_table$coverage, coverage_names),
-    match(primitive_table$primitive, primitive_order)
+  primitive_tol <- match(primitive_table$rel_tol, rel_tolerances)
+  primitive_coverage <- match(primitive_table$coverage, coverage_names)
+  primitive_factor <- match(primitive_table$primitive, primitive_order)
+  if (anyNA(c(primitive_tol, primitive_coverage, primitive_factor)) ||
+      any(primitive_table$e_cert < 0L | primitive_table$e_cert > tail_max_expansions) ||
+      any(primitive_table$e_level != primitive_table$e_cert + primitive_coverage - 1L)) return(FALSE)
+  expected_primitive_keys <- data.frame(
+    rel_tol = rep(seq_along(rel_tolerances), each = length(coverage_names) * length(primitive_order)),
+    coverage = rep(rep(seq_along(coverage_names), each = length(primitive_order)), length(rel_tolerances)),
+    primitive = rep(seq_along(primitive_order), length(rel_tolerances) * length(coverage_names))
   )
-  derivative_order_index <- order(
-    match(derivative_table$row_type, c("signed_summary", "richardson")),
-    match(derivative_table$rel_tol, rel_tolerances),
-    match(derivative_table$coverage, coverage_names),
-    ifelse(is.na(derivative_table$j), -1L, derivative_table$j)
+  primitive_keys <- data.frame(
+    rel_tol = primitive_tol, coverage = primitive_coverage, primitive = primitive_factor
   )
+  primitive_order_index <- order(primitive_tol, primitive_coverage, primitive_factor)
   if (!identical(primitive_order_index, seq_len(nrow(primitive_table))) ||
-      !identical(derivative_order_index, seq_len(nrow(derivative_table)))) return(FALSE)
-  if (anyDuplicated(paste(primitive_table$rel_tol, primitive_table$coverage,
-                          primitive_table$primitive, sep = "|")) ||
-      anyDuplicated(paste(derivative_table$row_type, derivative_table$rel_tol,
-                          derivative_table$coverage, derivative_table$j, sep = "|"))) return(FALSE)
+      !identical(primitive_keys, expected_primitive_keys)) return(FALSE)
+  derivative_row_type <- match(derivative_table$row_type, c("signed_summary", "richardson"))
+  derivative_tol <- match(derivative_table$rel_tol, rel_tolerances)
+  derivative_coverage <- match(derivative_table$coverage, coverage_names)
+  if (anyNA(c(derivative_row_type, derivative_tol, derivative_coverage))) return(FALSE)
+  signed <- derivative_table[derivative_table$row_type == "signed_summary", , drop = FALSE]
+  rich <- derivative_table[derivative_table$row_type == "richardson", , drop = FALSE]
+  if (nrow(signed) != 6L || nrow(rich) != 48L ||
+      any(!is.na(signed$j)) || any(!is.na(rich$j) & (rich$j < 0L | rich$j > 7L))) return(FALSE)
+  expected_signed_keys <- data.frame(
+    rel_tol = rep(seq_along(rel_tolerances), each = length(coverage_names)),
+    coverage = rep(seq_along(coverage_names), length(rel_tolerances))
+  )
+  signed_keys <- data.frame(
+    rel_tol = match(signed$rel_tol, rel_tolerances),
+    coverage = match(signed$coverage, coverage_names)
+  )
+  signed_order_index <- order(signed_keys$rel_tol, signed_keys$coverage)
+  if (!identical(signed_order_index, seq_len(nrow(signed))) ||
+      !identical(signed_keys, expected_signed_keys)) return(FALSE)
+  rich_keys <- data.frame(
+    rel_tol = match(rich$rel_tol, rel_tolerances),
+    coverage = match(rich$coverage, coverage_names), j = rich$j
+  )
+  expected_rich_keys <- data.frame(
+    rel_tol = rep(seq_along(rel_tolerances), each = length(coverage_names) * 8L),
+    coverage = rep(rep(seq_along(coverage_names), each = 8L), length(rel_tolerances)),
+    j = rep(0:7, length(rel_tolerances) * length(coverage_names))
+  )
+  rich_order_index <- order(rich_keys$rel_tol, rich_keys$coverage, rich_keys$j)
+  if (!identical(rich_order_index, seq_len(nrow(rich))) ||
+      !identical(rich_keys, expected_rich_keys)) return(FALSE)
+  signed_na_columns <- c(
+    "h_coarse", "h_fine", "log_plus_coarse", "log_minus_coarse",
+    "b_plus_coarse", "b_minus_coarse", "log_plus_fine", "log_minus_fine",
+    "b_plus_fine", "b_minus_fine", "D_coarse", "D_fine", "B_D_coarse",
+    "B_D_fine", "R_j", "B_R_j", "accepted"
+  )
+  rich_na_columns <- c(
+    "log_m0", "b_D", "derivative_a", "B_a", "derivative_sigma", "B_sigma",
+    "P", "N", "kappa_cancel", "lost_decimal_digits", "E_int_a", "E_tail_a",
+    "E_arith_a", "E_int_sigma", "E_tail_sigma", "E_arith_sigma", "accepted_j",
+    "accepted_h_fine", "accepted_R", "accepted_B_R", "agreement_abs",
+    "agreement_scaled"
+  )
+  if (!all(vapply(signed[, signed_na_columns, drop = FALSE], function(x) all(is.na(x)), logical(1))) ||
+      !all(vapply(rich[, rich_na_columns, drop = FALSE], function(x) all(is.na(x)), logical(1)))) return(FALSE)
   rich <- derivative_table[derivative_table$row_type == "richardson", , drop = FALSE]
   accepted_counts <- aggregate(
     accepted ~ rel_tol + coverage, rich, sum
@@ -669,7 +727,21 @@ validate_tables <- function(primitive_table, derivative_table) {
     "relative_tail_bound"
   )])
   if (any(!is.finite(finite_primitive))) return(FALSE)
-  signed <- derivative_table[derivative_table$row_type == "signed_summary", , drop = FALSE]
+  if (any(primitive_table$q < 0 | primitive_table$relative_tail_bound < 0) ||
+      any(!is.finite(primitive_table$delta_log_previous[!is.na(primitive_table$delta_log_previous)])) ||
+      any(!is.finite(primitive_table$E_log_previous[!is.na(primitive_table$E_log_previous)])) ||
+      any(!is.finite(primitive_table$delta_log_certified[!is.na(primitive_table$delta_log_certified)])) ||
+      any(!is.finite(primitive_table$E_log_certified[!is.na(primitive_table$E_log_certified)]))) return(FALSE)
+  certified_rows <- primitive_table$coverage == "certified"
+  noncertified_rows <- !certified_rows
+  if (any(!is.na(primitive_table$delta_log_previous[certified_rows])) ||
+      any(!is.na(primitive_table$E_log_previous[certified_rows])) ||
+      any(!is.na(primitive_table$delta_log_certified[certified_rows])) ||
+      any(!is.na(primitive_table$E_log_certified[certified_rows])) ||
+      any(is.na(primitive_table$delta_log_previous[noncertified_rows])) ||
+      any(is.na(primitive_table$E_log_previous[noncertified_rows])) ||
+      any(is.na(primitive_table$delta_log_certified[noncertified_rows])) ||
+      any(is.na(primitive_table$E_log_certified[noncertified_rows]))) return(FALSE)
   rich_numeric <- c(
     "j", "h_coarse", "h_fine", "log_plus_coarse", "log_minus_coarse",
     "b_plus_coarse", "b_minus_coarse", "log_plus_fine", "log_minus_fine",
@@ -685,7 +757,28 @@ validate_tables <- function(primitive_table, derivative_table) {
     "accepted_h_fine", "accepted_R", "accepted_B_R", "agreement_abs",
     "agreement_scaled"
   )])))) return(FALSE)
-  if (anyNA(derivative_table$accepted)) return(FALSE)
+  if (any(!is.finite(signed$b_D)) || any(signed$b_D < 0) ||
+      any(!is.finite(signed$B_a)) || any(signed$B_a < 0) ||
+      any(!is.finite(signed$B_sigma)) || any(signed$B_sigma < 0) ||
+      any(primitive_table$integrate_abs_error < 0) ||
+      any(!is.finite(primitive_table$q)) || any(primitive_table$q < 0) ||
+      any(!is.finite(primitive_table$relative_tail_bound)) ||
+      any(primitive_table$relative_tail_bound < 0)) return(FALSE)
+  if (anyNA(rich$accepted) || !is.logical(rich$accepted) ||
+      any(!is.na(rich$rho[rich$j == 0L])) || any(is.na(rich$rho[rich$j > 0L])) ||
+      any(!is.na(rich$rho) & rich$rho < 0) ||
+      any(is.na(signed$rho)) || any(!is.finite(signed$rho)) ||
+      any(signed$rho < 0) || any(!is.finite(signed$accepted_R)) ||
+      any(!is.finite(signed$accepted_B_R)) ||
+      any(!is.finite(signed$agreement_abs)) ||
+      any(!is.finite(signed$agreement_scaled))) return(FALSE)
+  if (any(!is.finite(unlist(rich[, c(
+    "b_plus_coarse", "b_minus_coarse", "b_plus_fine", "b_minus_fine",
+    "B_D_coarse", "B_D_fine", "B_R_j"
+  )]))) || any(unlist(rich[, c(
+    "b_plus_coarse", "b_minus_coarse", "b_plus_fine", "b_minus_fine",
+    "B_D_coarse", "B_D_fine", "B_R_j"
+  )]) < 0)) return(FALSE)
   TRUE
 }
 
@@ -698,7 +791,7 @@ span_with_envelopes <- function(values, envelopes) {
 evaluate_stable_criteria <- function(primitive_table, derivative_table) {
   signed <- derivative_table[derivative_table$row_type == "signed_summary", , drop = FALSE]
   rich <- derivative_table[derivative_table$row_type == "richardson", , drop = FALSE]
-  statuses <- stats::setNames(rep("PASS", 11L), paste0("S", sprintf("%02d", 1:11),
+  status <- stats::setNames(rep("PASS", 11L), paste0("S", sprintf("%02d", 1:11),
                                                         c("_finite_tail", "_integrate_ok",
                                                           "_primitive_log_compatible", "_value_resolution",
                                                           "_a_resolution", "_sigma_resolution",
@@ -712,44 +805,44 @@ evaluate_stable_criteria <- function(primitive_table, derivative_table) {
     "log_m0", "b_D", "derivative_a", "B_a", "derivative_sigma", "B_sigma",
     "P", "N", "kappa_cancel", "lost_decimal_digits"
   )])))
-  statuses[[1L]] <- if (finite_ok &&
+  status[[1L]] <- if (finite_ok &&
                          all(primitive_table$relative_tail_bound <= tail_relative_limit)) "PASS" else "FAIL"
-  statuses[[2L]] <- if (isTRUE(attr(primitive_table, "integration_ok"))) "PASS" else "FAIL"
+  status[[2L]] <- if (isTRUE(attr(primitive_table, "integration_ok"))) "PASS" else "FAIL"
   transition_ok <- all(primitive_table$delta_log_previous <= primitive_table$E_log_previous |
                          is.na(primitive_table$delta_log_previous)) &&
     all(primitive_table$delta_log_certified <= primitive_table$E_log_certified |
           is.na(primitive_table$delta_log_certified))
-  statuses[[3L]] <- if (transition_ok) "PASS" else "FAIL"
+  status[[3L]] <- if (transition_ok) "PASS" else "FAIL"
   value_raw <- max(signed$log_m0) - min(signed$log_m0)
   value_span <- span_with_envelopes(signed$log_m0, signed$b_D)
-  statuses[[4L]] <- if (all(signed$b_D <= 1e-8) && value_span <= 1e-8 &&
-                         unseen_frozen * value_raw <= value_scaled_limit) "PASS" else "FAIL"
+  status[[4L]] <- if (all(signed$b_D <= 1e-8) && value_span <= 1e-8 &&
+                         unseen_frozen * value_span <= value_scaled_limit) "PASS" else "FAIL"
   a_limit <- reference_agreement + reference_relative_slope * max(abs(signed$derivative_a))
   a_raw <- max(signed$derivative_a) - min(signed$derivative_a)
   a_span <- span_with_envelopes(signed$derivative_a, signed$B_a)
-  statuses[[5L]] <- if (a_raw <= a_limit && a_span <= a_limit &&
+  status[[5L]] <- if (a_raw <= a_limit && a_span <= a_limit &&
                          scale_a * a_span <= decision_scaled_limit) "PASS" else "FAIL"
   sigma_limit <- reference_agreement + reference_relative_slope * max(abs(signed$derivative_sigma))
   sigma_raw <- max(signed$derivative_sigma) - min(signed$derivative_sigma)
   sigma_span <- span_with_envelopes(signed$derivative_sigma, signed$B_sigma)
-  statuses[[6L]] <- if (sigma_raw <= sigma_limit && sigma_span <= sigma_limit &&
+  status[[6L]] <- if (sigma_raw <= sigma_limit && sigma_span <= sigma_limit &&
                          scale_sigma * sigma_span <= decision_scaled_limit) "PASS" else "FAIL"
-  statuses[[7L]] <- if (all(scale_a * signed$B_a <= decision_scaled_limit) &&
+  status[[7L]] <- if (all(scale_a * signed$B_a <= decision_scaled_limit) &&
                          all(scale_sigma * signed$B_sigma <= decision_scaled_limit)) "PASS" else "FAIL"
   accepted <- rich[rich$accepted, , drop = FALSE]
-  statuses[[8L]] <- if (nrow(accepted) == 6L) "PASS" else "FAIL"
-  statuses[[9L]] <- if (nrow(accepted) == 6L &&
+  status[[8L]] <- if (nrow(accepted) == 6L) "PASS" else "FAIL"
+  status[[9L]] <- if (nrow(accepted) == 6L &&
                          all(scale_sigma * accepted$B_R_j <= decision_scaled_limit)) "PASS" else "FAIL"
   agreement_ok <- nrow(accepted) == 6L && all(
     signed$agreement_abs <= derivative_sanity_limit &
       signed$agreement_scaled <= decision_scaled_limit
   )
-  statuses[[10L]] <- if (agreement_ok) "PASS" else "FAIL"
+  status[[10L]] <- if (agreement_ok) "PASS" else "FAIL"
   accepted_r <- signed$accepted_R
   accepted_b <- signed$accepted_B_R
-  statuses[[11L]] <- if (all(is.finite(accepted_r)) &&
+  status[[11L]] <- if (all(is.finite(accepted_r)) &&
                           span_with_envelopes(accepted_r, accepted_b) * scale_sigma <= decision_scaled_limit) "PASS" else "FAIL"
-  list(statuses = statuses, raw = list(
+  list(status = status, raw = list(
     value_raw = value_raw, a_raw = a_raw, sigma_raw = sigma_raw,
     agreement_abs = signed$agreement_abs,
     agreement_scaled_raw = scale_sigma * (signed$agreement_abs + signed$rho),
@@ -757,11 +850,29 @@ evaluate_stable_criteria <- function(primitive_table, derivative_table) {
   ))
 }
 
+run_external <- function(command, args) {
+  stdout_path <- tempfile("goal002r-adjudication-stdout-")
+  stderr_path <- tempfile("goal002r-adjudication-stderr-")
+  on.exit(unlink(c(stdout_path, stderr_path)), add = TRUE)
+  status <- system2(command, args, stdout = stdout_path, stderr = stderr_path)
+  if (is.null(status)) status <- 0L
+  output <- c(
+    if (file.exists(stdout_path)) readLines(stdout_path, warn = FALSE) else character(),
+    if (file.exists(stderr_path)) readLines(stderr_path, warn = FALSE) else character()
+  )
+  list(status = as.integer(status), output = output)
+}
+
 sha256_file <- function(path) {
-  result <- system2("sha256sum", path, stdout = TRUE, stderr = TRUE)
-  status <- attr(result, "status")
-  if (!is.null(status) && status != 0L) stop(paste(result, collapse = "\n"), call. = FALSE)
-  strsplit(result[[1L]], "[[:space:]]+")[[1L]][[1L]]
+  result <- run_external("sha256sum", path)
+  if (result$status != 0L || length(result$output) != 1L) {
+    stop(paste(result$output, collapse = "\n"), call. = FALSE)
+  }
+  fields <- strsplit(result$output[[1L]], "[[:space:]]+")[[1L]]
+  if (length(fields) < 2L || !grepl("^[0-9a-f]{64}$", fields[[1L]])) {
+    stop("sha256sum returned an invalid digest.", call. = FALSE)
+  }
+  fields[[1L]]
 }
 
 source_paths <- c(
@@ -778,14 +889,31 @@ source_paths_rel <- c(
 )
 
 check_sources_clean <- function() {
-  tracked <- system2("git", c("-C", project_root, "ls-files", "--error-unmatch", unname(source_paths_rel)),
-                     stdout = TRUE, stderr = TRUE)
-  if (length(tracked) != length(source_paths)) stop("X02 failed: adjudication files are not tracked.", call. = FALSE)
-  dirty_worktree <- system2("git", c("-C", project_root, "diff", "--quiet", "--", unname(source_paths_rel)),
-                            stdout = FALSE, stderr = FALSE)
-  dirty_index <- system2("git", c("-C", project_root, "diff", "--cached", "--quiet", "--", unname(source_paths_rel)),
-                         stdout = FALSE, stderr = FALSE)
-  if (dirty_worktree != 0L || dirty_index != 0L) stop("X02 failed: adjudication sources are dirty.", call. = FALSE)
+  tracked_result <- run_external(
+    "git", c("-C", project_root, "ls-files", "--error-unmatch", unname(source_paths_rel))
+  )
+  tracked <- tracked_result$output[grepl("^[^:]+$", tracked_result$output)]
+  if (tracked_result$status != 0L ||
+      !identical(sort(tracked), sort(unname(source_paths_rel)))) {
+    stop("X02 failed: adjudication files are not exactly tracked.", call. = FALSE)
+  }
+  for (path in unname(source_paths_rel)) {
+    head_result <- run_external(
+      "git", c("-C", project_root, "cat-file", "-e", paste0("HEAD:", path))
+    )
+    if (head_result$status != 0L) {
+      stop("X02 failed: adjudication file is absent from HEAD.", call. = FALSE)
+    }
+  }
+  dirty_worktree <- run_external(
+    "git", c("-C", project_root, "diff", "--quiet", "--", unname(source_paths_rel))
+  )
+  dirty_index <- run_external(
+    "git", c("-C", project_root, "diff", "--cached", "--quiet", "--", unname(source_paths_rel))
+  )
+  if (dirty_worktree$status != 0L || dirty_index$status != 0L) {
+    stop("X02 failed: adjudication sources are dirty or Git reported an error.", call. = FALSE)
+  }
 }
 
 final_dir <- file.path(project_root, "outputs", "goal002r", "oracle-stability-adjudication-v2")
@@ -807,12 +935,29 @@ write_decision <- function(path, outcome, first_decisive, x_status, s_status,
     paste0("initial_scales=", initial_scales),
     paste0("tail_relative_limit=", tail_relative_limit),
     paste0("tail_max_expansions=", tail_max_expansions),
+    paste0("coverage_names=", paste(coverage_names, collapse = ",")),
     paste0("richardson_start=", richardson_start),
     paste0("richardson_j=", paste(richardson_j, collapse = ":")),
     paste0("richardson_convergence=", richardson_convergence),
+    paste0("reference_agreement=", reference_agreement),
+    paste0("reference_relative_slope=", reference_relative_slope),
+    paste0("derivative_sanity_limit=", derivative_sanity_limit),
     paste0("decision_scaled_limit=", decision_scaled_limit),
+    paste0("value_scaled_limit=", value_scaled_limit),
+    paste0("gradient_scale_a=", gradient_scales[["a"]]),
+    paste0("gradient_scale_sigma=", gradient_scales[["sigma"]]),
+    paste0("gradient_scale_log_sigma=", gradient_scales[["log_sigma"]]),
     paste0("scale_a=", scale_a),
-    paste0("scale_sigma=", scale_sigma)
+    paste0("scale_sigma=", scale_sigma),
+    paste0("historical_stop_order=", 256L),
+    paste0("historical_stop_search=target_error"),
+    paste0("historical_stop_derivative_sigma_change=", 1.0477378964424133e-09),
+    paste0("historical_stop_absolute_limit=", 1e-9),
+    paste0("historical_stop_log_m0_change=0"),
+    paste0("historical_stop_derivative_a_change=0"),
+    paste0("historical_stop_primitive_log_changes=0,0,0,0"),
+    paste0("historical_stop_evidence_exists=FALSE"),
+    paste0("historical_stop_order_decision_exists=FALSE")
   )
   for (name in names(x_status)) lines <- c(lines, paste0(name, "=", x_status[[name]]))
   for (name in names(s_status)) lines <- c(lines, paste0(name, "=", s_status[[name]]))
@@ -881,8 +1026,11 @@ if (file.exists(final_dir) || file.exists(staging_dir)) {
   stop("X01 failed: final or staging output already exists; no attempt made.", call. = FALSE)
 }
 check_sources_clean()
-git_head <- system2("git", c("-C", project_root, "rev-parse", "HEAD"), stdout = TRUE, stderr = TRUE)
-if (length(git_head) != 1L || !nzchar(git_head[[1L]])) stop("X03 failed: Git HEAD unavailable.", call. = FALSE)
+git_head_result <- run_external("git", c("-C", project_root, "rev-parse", "HEAD"))
+git_head <- git_head_result$output[grepl("^[0-9a-f]{40}$", git_head_result$output)]
+if (git_head_result$status != 0L || length(git_head) != 1L) {
+  stop("X03 failed: Git HEAD unavailable or malformed.", call. = FALSE)
+}
 provenance <- list(
   r_version = R.version.string,
   r_platform = R.version$platform,
@@ -891,6 +1039,11 @@ provenance <- list(
   hashes = vapply(source_paths, sha256_file, character(1))
 )
 x_status[["X03"]] <- "PASS"
+
+## Source the three inert Goal002R modules only after X01--X03 have passed.
+source(file.path(project_root, "R", "goal002r", "config.R"), local = .GlobalEnv)
+source(file.path(project_root, "R", "goal002r", "math.R"), local = .GlobalEnv)
+source(file.path(project_root, "R", "goal002r", "preflight_math.R"), local = .GlobalEnv)
 
 run_attempt <- function() {
   primitive_lists <- list()
@@ -918,7 +1071,7 @@ run_attempt <- function() {
   derivative_table <- as_complete_derivative_table(signed, sequences[sequence_keys])
   x_status[["X04"]] <<- if (validate_tables(primitive_table, derivative_table)) "PASS" else "FAIL"
   if (x_status[["X04"]] != "PASS") {
-    return(list(kind = "C", primitive = primitive_table, derivative = derivative_table,
+    return(list(kind = "X04", primitive = primitive_table, derivative = derivative_table,
                 criteria = NULL, first = "X04_in_memory_schema"))
   }
   criteria <- evaluate_stable_criteria(primitive_table, derivative_table)
@@ -929,11 +1082,11 @@ run_attempt <- function() {
       (raw$value_raw > 1e-8 || unseen_frozen * raw$value_raw > value_scaled_limit)) raw_failure <- "S04_value_resolution"
   if (is.null(raw_failure) && criteria$status[["S05_a_resolution"]] == "FAIL") {
     a_limit <- reference_agreement + reference_relative_slope * max(abs(derivative_table$derivative_a[derivative_table$row_type == "signed_summary"]))
-    if (raw$a_raw > a_limit) raw_failure <- "S05_a_resolution"
+    if (raw$a_raw > a_limit || scale_a * raw$a_raw > decision_scaled_limit) raw_failure <- "S05_a_resolution"
   }
   if (is.null(raw_failure) && criteria$status[["S06_sigma_resolution"]] == "FAIL") {
     sigma_limit <- reference_agreement + reference_relative_slope * max(abs(derivative_table$derivative_sigma[derivative_table$row_type == "signed_summary"]))
-    if (raw$sigma_raw > sigma_limit) raw_failure <- "S06_sigma_resolution"
+    if (raw$sigma_raw > sigma_limit || scale_sigma * raw$sigma_raw > decision_scaled_limit) raw_failure <- "S06_sigma_resolution"
   }
   if (is.null(raw_failure) && criteria$status[["S10_independent_agreement"]] == "FAIL" &&
       (any(raw$agreement_abs > derivative_sanity_limit, na.rm = TRUE) ||
@@ -968,13 +1121,20 @@ attempt <- tryCatch(
   }
 )
 
-if (attempt$kind %in% c("B00", "C00")) {
-  x_status[["X04"]] <- "NOT_REACHED"
-  if (attempt$kind == "B00") {
+if (attempt$kind %in% c("B00", "C00", "X04")) {
+  if (attempt$kind == "X04") {
+    publish_decision_only(
+      "C", attempt$first, x_status,
+      stats::setNames(rep("NOT_REACHED", 11L), paste0("S", sprintf("%02d", 1:11))),
+      "NOT_REACHED", "FAIL", provenance
+    )
+  } else if (attempt$kind == "B00") {
+    x_status[["X04"]] <- "NOT_REACHED"
     publish_decision_only("B", attempt$first, x_status,
                           stats::setNames(rep("NOT_REACHED", 11L), paste0("S", sprintf("%02d", 1:11))),
                           "FAIL", "NOT_REACHED", provenance)
   } else {
+    x_status[["X04"]] <- "NOT_REACHED"
     publish_decision_only("C", attempt$first, x_status,
                           stats::setNames(rep("NOT_REACHED", 11L), paste0("S", sprintf("%02d", 1:11))),
                           "NOT_REACHED", "FAIL", provenance)
