@@ -58,6 +58,19 @@ primitive_order <- c(
   "denominator", "numerator_a", "sigma_positive", "sigma_negative"
 )
 coverage_offsets <- stats::setNames(0:2, coverage_names)
+x_identifiers <- c(
+  "X01_output_absent", "X02_sources_committed_clean",
+  "X03_provenance_available", "X04_in_memory_schema",
+  "X05_evidence_publish"
+)
+s_identifiers <- c(
+  "S01_finite_tail", "S02_integrate_ok",
+  "S03_primitive_log_compatible", "S04_value_resolution",
+  "S05_a_resolution", "S06_sigma_resolution",
+  "S07_analytic_uncertainty", "S08_richardson_convergence",
+  "S09_richardson_uncertainty", "S10_independent_agreement",
+  "S11_richardson_span"
+)
 
 is_finite_scalar <- function(x) {
   is.numeric(x) && length(x) == 1L && is.finite(x)
@@ -765,7 +778,7 @@ validate_tables <- function(primitive_table, derivative_table) {
       any(!is.finite(primitive_table$relative_tail_bound)) ||
       any(primitive_table$relative_tail_bound < 0)) return(FALSE)
   if (anyNA(rich$accepted) || !is.logical(rich$accepted) ||
-      any(!is.na(rich$rho[rich$j == 0L])) || any(is.na(rich$rho[rich$j > 0L])) ||
+      any(!is.na(rich$rho[rich$j == 0L])) || any(!is.finite(rich$rho[rich$j > 0L])) ||
       any(!is.na(rich$rho) & rich$rho < 0) ||
       any(is.na(signed$rho)) || any(!is.finite(signed$rho)) ||
       any(signed$rho < 0) || any(!is.finite(signed$accepted_R)) ||
@@ -791,13 +804,7 @@ span_with_envelopes <- function(values, envelopes) {
 evaluate_stable_criteria <- function(primitive_table, derivative_table) {
   signed <- derivative_table[derivative_table$row_type == "signed_summary", , drop = FALSE]
   rich <- derivative_table[derivative_table$row_type == "richardson", , drop = FALSE]
-  status <- stats::setNames(rep("PASS", 11L), paste0("S", sprintf("%02d", 1:11),
-                                                        c("_finite_tail", "_integrate_ok",
-                                                          "_primitive_log_compatible", "_value_resolution",
-                                                          "_a_resolution", "_sigma_resolution",
-                                                          "_analytic_uncertainty", "_richardson_convergence",
-                                                          "_richardson_uncertainty", "_independent_agreement",
-                                                          "_richardson_span")))
+  status <- stats::setNames(rep("PASS", length(s_identifiers)), s_identifiers)
   finite_ok <- all(is.finite(as.matrix(primitive_table[, c(
     "mode", "local_scale", "lower_z", "upper_z", "log_integral",
     "anchored_integral", "integrate_abs_error", "q", "relative_tail_bound"
@@ -805,43 +812,43 @@ evaluate_stable_criteria <- function(primitive_table, derivative_table) {
     "log_m0", "b_D", "derivative_a", "B_a", "derivative_sigma", "B_sigma",
     "P", "N", "kappa_cancel", "lost_decimal_digits"
   )])))
-  status[[1L]] <- if (finite_ok &&
-                         all(primitive_table$relative_tail_bound <= tail_relative_limit)) "PASS" else "FAIL"
-  status[[2L]] <- if (isTRUE(attr(primitive_table, "integration_ok"))) "PASS" else "FAIL"
+  status[["S01_finite_tail"]] <- if (finite_ok &&
+                                      all(primitive_table$relative_tail_bound <= tail_relative_limit)) "PASS" else "FAIL"
+  status[["S02_integrate_ok"]] <- if (isTRUE(attr(primitive_table, "integration_ok"))) "PASS" else "FAIL"
   transition_ok <- all(primitive_table$delta_log_previous <= primitive_table$E_log_previous |
                          is.na(primitive_table$delta_log_previous)) &&
     all(primitive_table$delta_log_certified <= primitive_table$E_log_certified |
           is.na(primitive_table$delta_log_certified))
-  status[[3L]] <- if (transition_ok) "PASS" else "FAIL"
+  status[["S03_primitive_log_compatible"]] <- if (transition_ok) "PASS" else "FAIL"
   value_raw <- max(signed$log_m0) - min(signed$log_m0)
   value_span <- span_with_envelopes(signed$log_m0, signed$b_D)
-  status[[4L]] <- if (all(signed$b_D <= 1e-8) && value_span <= 1e-8 &&
-                         unseen_frozen * value_span <= value_scaled_limit) "PASS" else "FAIL"
+  status[["S04_value_resolution"]] <- if (all(signed$b_D <= 1e-8) && value_span <= 1e-8 &&
+                                              unseen_frozen * value_span <= value_scaled_limit) "PASS" else "FAIL"
   a_limit <- reference_agreement + reference_relative_slope * max(abs(signed$derivative_a))
   a_raw <- max(signed$derivative_a) - min(signed$derivative_a)
   a_span <- span_with_envelopes(signed$derivative_a, signed$B_a)
-  status[[5L]] <- if (a_raw <= a_limit && a_span <= a_limit &&
-                         scale_a * a_span <= decision_scaled_limit) "PASS" else "FAIL"
+  status[["S05_a_resolution"]] <- if (a_raw <= a_limit && a_span <= a_limit &&
+                                          scale_a * a_span <= decision_scaled_limit) "PASS" else "FAIL"
   sigma_limit <- reference_agreement + reference_relative_slope * max(abs(signed$derivative_sigma))
   sigma_raw <- max(signed$derivative_sigma) - min(signed$derivative_sigma)
   sigma_span <- span_with_envelopes(signed$derivative_sigma, signed$B_sigma)
-  status[[6L]] <- if (sigma_raw <= sigma_limit && sigma_span <= sigma_limit &&
-                         scale_sigma * sigma_span <= decision_scaled_limit) "PASS" else "FAIL"
-  status[[7L]] <- if (all(scale_a * signed$B_a <= decision_scaled_limit) &&
-                         all(scale_sigma * signed$B_sigma <= decision_scaled_limit)) "PASS" else "FAIL"
+  status[["S06_sigma_resolution"]] <- if (sigma_raw <= sigma_limit && sigma_span <= sigma_limit &&
+                                              scale_sigma * sigma_span <= decision_scaled_limit) "PASS" else "FAIL"
+  status[["S07_analytic_uncertainty"]] <- if (all(scale_a * signed$B_a <= decision_scaled_limit) &&
+                                                 all(scale_sigma * signed$B_sigma <= decision_scaled_limit)) "PASS" else "FAIL"
   accepted <- rich[rich$accepted, , drop = FALSE]
-  status[[8L]] <- if (nrow(accepted) == 6L) "PASS" else "FAIL"
-  status[[9L]] <- if (nrow(accepted) == 6L &&
-                         all(scale_sigma * accepted$B_R_j <= decision_scaled_limit)) "PASS" else "FAIL"
+  status[["S08_richardson_convergence"]] <- if (nrow(accepted) == 6L) "PASS" else "FAIL"
+  status[["S09_richardson_uncertainty"]] <- if (nrow(accepted) == 6L &&
+                                                   all(scale_sigma * accepted$B_R_j <= decision_scaled_limit)) "PASS" else "FAIL"
   agreement_ok <- nrow(accepted) == 6L && all(
     signed$agreement_abs <= derivative_sanity_limit &
       signed$agreement_scaled <= decision_scaled_limit
   )
-  status[[10L]] <- if (agreement_ok) "PASS" else "FAIL"
+  status[["S10_independent_agreement"]] <- if (agreement_ok) "PASS" else "FAIL"
   accepted_r <- signed$accepted_R
   accepted_b <- signed$accepted_B_R
-  status[[11L]] <- if (all(is.finite(accepted_r)) &&
-                          span_with_envelopes(accepted_r, accepted_b) * scale_sigma <= decision_scaled_limit) "PASS" else "FAIL"
+  status[["S11_richardson_span"]] <- if (all(is.finite(accepted_r)) &&
+                                             span_with_envelopes(accepted_r, accepted_b) * scale_sigma <= decision_scaled_limit) "PASS" else "FAIL"
   list(status = status, raw = list(
     value_raw = value_raw, a_raw = a_raw, sigma_raw = sigma_raw,
     agreement_abs = signed$agreement_abs,
@@ -895,14 +902,14 @@ check_sources_clean <- function() {
   tracked <- tracked_result$output[grepl("^[^:]+$", tracked_result$output)]
   if (tracked_result$status != 0L ||
       !identical(sort(tracked), sort(unname(source_paths_rel)))) {
-    stop("X02 failed: adjudication files are not exactly tracked.", call. = FALSE)
+    stop("X02_sources_committed_clean failed: adjudication files are not exactly tracked.", call. = FALSE)
   }
   for (path in unname(source_paths_rel)) {
     head_result <- run_external(
       "git", c("-C", project_root, "cat-file", "-e", paste0("HEAD:", path))
     )
     if (head_result$status != 0L) {
-      stop("X02 failed: adjudication file is absent from HEAD.", call. = FALSE)
+      stop("X02_sources_committed_clean failed: adjudication file is absent from HEAD.", call. = FALSE)
     }
   }
   dirty_worktree <- run_external(
@@ -912,7 +919,7 @@ check_sources_clean <- function() {
     "git", c("-C", project_root, "diff", "--cached", "--quiet", "--", unname(source_paths_rel))
   )
   if (dirty_worktree$status != 0L || dirty_index$status != 0L) {
-    stop("X02 failed: adjudication sources are dirty or Git reported an error.", call. = FALSE)
+    stop("X02_sources_committed_clean failed: adjudication sources are dirty or Git reported an error.", call. = FALSE)
   }
 }
 
@@ -985,9 +992,9 @@ publish_decision_only <- function(outcome, first_decisive, x_status, s_status,
   write_decision(decision_tmp, outcome, first_decisive, x_status, s_status,
                  b_status, c_status, provenance)
   if (!file.rename(decision_tmp, file.path(staging_dir, "decision.txt"))) {
-    stop("X05 failed: decision publication failed.", call. = FALSE)
+    stop("X05_evidence_publish failed: decision publication failed.", call. = FALSE)
   }
-  if (!file.rename(staging_dir, final_dir)) stop("X05 failed: final publication failed.", call. = FALSE)
+  if (!file.rename(staging_dir, final_dir)) stop("X05_evidence_publish failed: final publication failed.", call. = FALSE)
 }
 
 publish_complete <- function(primitive_table, derivative_table, outcome,
@@ -1001,13 +1008,13 @@ publish_complete <- function(primitive_table, derivative_table, outcome,
   primitive_check <- utils::read.csv(primitive_tmp, check.names = FALSE, stringsAsFactors = FALSE)
   derivative_check <- utils::read.csv(derivative_tmp, check.names = FALSE, stringsAsFactors = FALSE)
   if (!validate_tables(primitive_check, derivative_check)) {
-    stop("X05 failed: written evidence did not pass read-back validation.", call. = FALSE)
+    stop("X05_evidence_publish failed: written evidence did not pass read-back validation.", call. = FALSE)
   }
   primitive_hash <- sha256_file(primitive_tmp)
   derivative_hash <- sha256_file(derivative_tmp)
   if (!file.rename(primitive_tmp, file.path(staging_dir, "primitive-stability.csv")) ||
       !file.rename(derivative_tmp, file.path(staging_dir, "derivative-stability.csv"))) {
-    stop("X05 failed: evidence publication failed.", call. = FALSE)
+    stop("X05_evidence_publish failed: evidence publication failed.", call. = FALSE)
   }
   decision_tmp <- file.path(staging_dir, "decision.txt.tmp")
   write_decision(
@@ -1017,22 +1024,22 @@ publish_complete <- function(primitive_table, derivative_table, outcome,
       derivative_stability_csv = derivative_hash)
   )
   if (!file.rename(decision_tmp, file.path(staging_dir, "decision.txt"))) {
-    stop("X05 failed: decision publication failed.", call. = FALSE)
+    stop("X05_evidence_publish failed: decision publication failed.", call. = FALSE)
   }
-  if (!file.rename(staging_dir, final_dir)) stop("X05 failed: final publication failed.", call. = FALSE)
+  if (!file.rename(staging_dir, final_dir)) stop("X05_evidence_publish failed: final publication failed.", call. = FALSE)
 }
 
 ## Execution-integrity checks precede the first numerical evaluation.
-x_status <- stats::setNames(rep("PASS", 5L), paste0("X0", 1:5))
+x_status <- stats::setNames(rep("PASS", length(x_identifiers)), x_identifiers)
 if (file.exists(final_dir) || file.exists(staging_dir)) {
-  x_status[["X01"]] <- "FAIL"
-  stop("X01 failed: final or staging output already exists; no attempt made.", call. = FALSE)
+  x_status[["X01_output_absent"]] <- "FAIL"
+  stop("X01_output_absent failed: final or staging output already exists; no attempt made.", call. = FALSE)
 }
 check_sources_clean()
 git_head_result <- run_external("git", c("-C", project_root, "rev-parse", "HEAD"))
 git_head <- git_head_result$output[grepl("^[0-9a-f]{40}$", git_head_result$output)]
 if (git_head_result$status != 0L || length(git_head) != 1L) {
-  stop("X03 failed: Git HEAD unavailable or malformed.", call. = FALSE)
+  stop("X03_provenance_available failed: Git HEAD unavailable or malformed.", call. = FALSE)
 }
 provenance <- list(
   r_version = R.version.string,
@@ -1041,9 +1048,11 @@ provenance <- list(
   git_head = git_head[[1L]],
   hashes = vapply(source_paths, sha256_file, character(1))
 )
-x_status[["X03"]] <- "PASS"
+x_status[["X03_provenance_available"]] <- "PASS"
 
-## Source the three inert Goal002R modules only after X01--X03 have passed.
+## Source the three inert Goal002R modules only after
+## X01_output_absent, X02_sources_committed_clean, and
+## X03_provenance_available have passed.
 source(file.path(project_root, "R", "goal002r", "config.R"), local = .GlobalEnv)
 source(file.path(project_root, "R", "goal002r", "math.R"), local = .GlobalEnv)
 source(file.path(project_root, "R", "goal002r", "preflight_math.R"), local = .GlobalEnv)
@@ -1072,9 +1081,9 @@ run_attempt <- function() {
   attr(primitive_table, "integration_ok") <- all(integration_ok)
   signed <- signed_lists[sequence_keys]
   derivative_table <- as_complete_derivative_table(signed, sequences[sequence_keys])
-  x_status[["X04"]] <<- if (validate_tables(primitive_table, derivative_table)) "PASS" else "FAIL"
-  if (x_status[["X04"]] != "PASS") {
-    return(list(kind = "X04", primitive = primitive_table, derivative = derivative_table,
+  x_status[["X04_in_memory_schema"]] <<- if (validate_tables(primitive_table, derivative_table)) "PASS" else "FAIL"
+  if (x_status[["X04_in_memory_schema"]] != "PASS") {
+    return(list(kind = "X04_in_memory_schema", primitive = primitive_table, derivative = derivative_table,
                 criteria = NULL, first = "X04_in_memory_schema"))
   }
   criteria <- evaluate_stable_criteria(primitive_table, derivative_table)
@@ -1115,40 +1124,40 @@ run_attempt <- function() {
 attempt <- tryCatch(
   run_attempt(),
   goal002r_adjudication_numerical_error = function(error) {
-    list(kind = "B00", primitive = NULL, derivative = NULL, criteria = NULL,
+    list(kind = "B00_numerical_certification", primitive = NULL, derivative = NULL, criteria = NULL,
          first = "B00_numerical_certification", error = error)
   },
   error = function(error) {
-    list(kind = "C00", primitive = NULL, derivative = NULL, criteria = NULL,
+    list(kind = "C00_implementation_failure", primitive = NULL, derivative = NULL, criteria = NULL,
          first = "C00_implementation_failure", error = error)
   }
 )
 
-if (attempt$kind %in% c("B00", "C00", "X04")) {
-  if (attempt$kind == "X04") {
+if (attempt$kind %in% c("B00_numerical_certification", "C00_implementation_failure", "X04_in_memory_schema")) {
+  if (attempt$kind == "X04_in_memory_schema") {
     publish_decision_only(
       "C", attempt$first, x_status,
-      stats::setNames(rep("NOT_REACHED", 11L), paste0("S", sprintf("%02d", 1:11))),
-      "NOT_REACHED", "FAIL", provenance
+      stats::setNames(rep("NOT_REACHED", length(s_identifiers)), s_identifiers),
+      "NOT_REACHED", "NOT_REACHED", provenance
     )
-  } else if (attempt$kind == "B00") {
-    x_status[["X04"]] <- "NOT_REACHED"
+  } else if (attempt$kind == "B00_numerical_certification") {
+    x_status[["X04_in_memory_schema"]] <- "NOT_REACHED"
     publish_decision_only("B", attempt$first, x_status,
-                          stats::setNames(rep("NOT_REACHED", 11L), paste0("S", sprintf("%02d", 1:11))),
+                          stats::setNames(rep("NOT_REACHED", length(s_identifiers)), s_identifiers),
                           "FAIL", "NOT_REACHED", provenance)
   } else {
-    x_status[["X04"]] <- "NOT_REACHED"
+    x_status[["X04_in_memory_schema"]] <- "NOT_REACHED"
     publish_decision_only("C", attempt$first, x_status,
-                          stats::setNames(rep("NOT_REACHED", 11L), paste0("S", sprintf("%02d", 1:11))),
+                          stats::setNames(rep("NOT_REACHED", length(s_identifiers)), s_identifiers),
                           "NOT_REACHED", "FAIL", provenance)
   }
 } else {
-  x_status[["X04"]] <- "PASS"
+  x_status[["X04_in_memory_schema"]] <- "PASS"
   stable <- attempt$criteria$status
   outcome <- attempt$kind
   first <- if (outcome == "A") "NONE" else attempt$first
-  b_status <- if (outcome == "B") "FAIL" else "NOT_REACHED"
-  c_status <- if (outcome == "C") "FAIL" else "NOT_REACHED"
+  b_status <- "NOT_REACHED"
+  c_status <- "NOT_REACHED"
   publish_complete(
     attempt$primitive, attempt$derivative, outcome, first,
     x_status, stable, b_status, c_status, provenance
