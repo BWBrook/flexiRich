@@ -652,3 +652,67 @@ goal002r_preflight_run <- function() {
     decision = decision
   )
 }
+
+goal002r_preflight_write <- function(result, output_dir) {
+  paths <- stats::setNames(
+    file.path(
+      output_dir,
+      c(
+        "rule-integrity.csv",
+        "posterior-state-audit.csv",
+        "domain-audit.csv",
+        "numerical-maxima.csv",
+        "decision.txt"
+      )
+    ),
+    c(
+      "rule_integrity",
+      "posterior_audit",
+      "domain_audit",
+      "maxima",
+      "decision"
+    )
+  )
+  if (any(file.exists(paths))) {
+    .goal002r_stop("Output directory already contains approved evidence files.")
+  }
+  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
+  utils::write.csv(
+    result$rule_integrity,
+    paths[["rule_integrity"]],
+    row.names = FALSE
+  )
+  utils::write.csv(
+    result$posterior_audit,
+    paths[["posterior_audit"]],
+    row.names = FALSE
+  )
+  utils::write.csv(
+    result$domain_audit,
+    paths[["domain_audit"]],
+    row.names = FALSE
+  )
+  utils::write.csv(result$maxima, paths[["maxima"]], row.names = FALSE)
+  criterion_lines <- vapply(
+    seq_len(nrow(result$criteria)),
+    function(index) {
+      values <- vapply(
+        result$criteria,
+        function(column) as.character(column[[index]]),
+        character(1)
+      )
+      paste0(
+        "criterion ",
+        index,
+        ": ",
+        paste(names(values), values, sep = "=", collapse = ", ")
+      )
+    },
+    character(1)
+  )
+  writeLines(
+    c(paste("decision:", result$decision), criterion_lines),
+    paths[["decision"]]
+  )
+  paths
+}

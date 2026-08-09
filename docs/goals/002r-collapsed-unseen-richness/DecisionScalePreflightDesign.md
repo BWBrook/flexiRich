@@ -1,6 +1,6 @@
 # Goal 002R Decision-Scale Numerical Preflight Design
 
-Status: approved for implementation
+Status: stopped — adjudication pending
 Date: 2026-08-07
 
 ## Purpose
@@ -384,3 +384,26 @@ after the preflight decision, and return it for PI assessment.
 
 No empirical analysis, broader calibration, new integrator search, or
 ecological model extension begins in this tranche.
+
+## First full-preflight attempt: stopped without a decision
+
+The single authorised Task 4 run was executed on 2026-08-07 after all ordinary
+tests passed. It stopped after 73 seconds during the order-256 target-error
+maximum search, before the evidence writer or order selector ran. The failing
+off-grid state was
+
+\[
+a=10,\qquad \sigma_\alpha=0.01356952703481304.
+\]
+
+The oracle's post-expansion change in the sigma derivative was
+\(1.0477378964424133\times10^{-9}\), marginally above the frozen
+\(10^{-9}\) absolute stability limit. The other component and primitive-log
+changes were zero at reported precision. No CSV evidence, `decision.txt`, or
+`SELECT_256`/`SELECT_512`/`CLOSE` outcome was produced, and the run was not
+repaired or repeated.
+
+This is an oracle-diagnostic stop rather than evidence for or against either
+candidate rule or the ecological model. A separately versioned, state-specific
+adjudication must determine whether the absolute stability limit is meaningful
+at this derivative scale before any new full run can be considered.

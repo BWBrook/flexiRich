@@ -831,3 +831,61 @@ testthat::test_that("failed derivative integrity prevents selection", {
     "Preflight derivative sanity checks failed"
   )
 })
+
+goal002r_preflight_result_fixture <- function(decision = "SELECT_256") {
+  list(
+    rule_integrity = tibble::tibble(check = "rule", passed = TRUE),
+    posterior_audit = tibble::tibble(
+      source = "posterior",
+      order = c(256L, 512L)
+    ),
+    domain_audit = tibble::tibble(
+      source = "domain",
+      order = c(256L, 512L)
+    ),
+    maxima = tibble::tibble(
+      order = c(256L, 512L),
+      metric = "target_error",
+      observed = 0
+    ),
+    criteria = tibble::tibble(
+      order = c(256L, 512L),
+      full_pass = TRUE,
+      headroom_pass = c(TRUE, FALSE)
+    ),
+    decision = decision
+  )
+}
+
+testthat::test_that("preflight writer emits only the five approved files", {
+  fixture <- goal002r_preflight_result_fixture(decision = "SELECT_256")
+  output_dir <- tempfile("goal002r-preflight-")
+  paths <- goal002r_preflight_write(fixture, output_dir)
+  testthat::expect_setequal(
+    basename(paths),
+    c(
+      "rule-integrity.csv",
+      "posterior-state-audit.csv",
+      "domain-audit.csv",
+      "numerical-maxima.csv",
+      "decision.txt"
+    )
+  )
+  testthat::expect_true(all(file.exists(paths)))
+  decision_text <- paste(readLines(paths[["decision"]]), collapse = "\n")
+  testthat::expect_match(decision_text, "SELECT_256")
+})
+
+testthat::test_that("preflight writer refuses an existing evidence file", {
+  fixture <- goal002r_preflight_result_fixture()
+  output_dir <- tempfile("goal002r-preflight-")
+  dir.create(output_dir)
+  decision_file <- file.path(output_dir, "decision.txt")
+  writeLines("existing evidence", decision_file)
+
+  testthat::expect_error(
+    goal002r_preflight_write(fixture, output_dir),
+    "already contains approved evidence"
+  )
+  testthat::expect_identical(readLines(decision_file), "existing evidence")
+})
