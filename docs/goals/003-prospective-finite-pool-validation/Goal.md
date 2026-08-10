@@ -1,6 +1,6 @@
 # Goal 003 — Prospective finite-pool richness validation
 
-Status: active — Task 1 complete; Task 2 ready
+Status: active — Tasks 1–2 complete; Task 3 ready
 Defined: 2026-08-10
 
 ## Decision question
@@ -209,6 +209,12 @@ sampling-intensity curves and prospective predictions from each eligible
 baseline. Freeze their settings; do not weaken a comparator to make FlexiRich
 look favourable.
 
+Completed 2026-08-10. All frozen comparators and the pinned Judbury adapter are
+implemented and tested. The cumulative reference run retained terminal-clean
+occupancy fits at 4, 26, and 153 weeks; the 52-week fit remained non-clean after
+its sole rescue and is recorded as a comparator failure. This is a baseline
+result, not grounds for further sampler tuning.
+
 ### Task 3 — Implement one candidate model
 
 Reuse the verified Goal001/Goal002 effort, likelihood, support, and posterior-
@@ -370,5 +376,6 @@ or condensed when that tranche closes.
 
 ## Immediate stopping point
 
-Task 1 is complete. The next tranche is Task 2: implement and freeze the
-transparent baselines before writing or fitting the FlexiRich candidate.
+Tasks 1 and 2 are complete. The next tranche is Task 3: specify and implement
+the single minimal FlexiRich candidate without reopening the baseline settings
+or fitting it to prospective Judbury outcomes.

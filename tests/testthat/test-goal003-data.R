@@ -87,6 +87,33 @@ testthat::test_that("Goal003 weekly inputs preserve effort and unseen candidates
     result$detections
   )
   testthat::expect_true(validate_flexirich_g_data(inference))
+
+  window <- prepare_goal003_analysis_window(
+    result,
+    result$occasion_calendar$occasion_id[2:3]
+  )
+  testthat::expect_identical(window$occasion_ids, c("occ_002", "occ_003"))
+  testthat::expect_equal(nrow(window$observed), 3L * 2L * 2L)
+})
+
+testthat::test_that("Goal003 windows reject unknown or reordered occasions", {
+  fixture <- .goal003_input_fixture()
+  weekly <- build_goal003_weekly_inputs(
+    fixture$candidate_pool,
+    fixture$operation_daily,
+    fixture$events
+  )
+
+  testthat::expect_error(
+    prepare_goal003_analysis_window(weekly, "occ_999"),
+    "unknown",
+    fixed = TRUE
+  )
+  testthat::expect_error(
+    prepare_goal003_analysis_window(weekly, c("occ_003", "occ_002")),
+    "chronological",
+    fixed = TRUE
+  )
 })
 
 testthat::test_that("Goal003 weekly inputs reject effort and event leakage", {

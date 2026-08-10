@@ -246,6 +246,55 @@ build_goal003_weekly_inputs <- function(
   )
 }
 
+#' Prepare one Goal003 analysis window from canonical weekly inputs
+#'
+#' @param weekly_inputs Output from `build_goal003_weekly_inputs()`.
+#' @param occasion_ids Non-empty subset of canonical occasion identifiers.
+#'
+#' @return A canonical `flexirich_g_data` object for the selected occasions.
+prepare_goal003_analysis_window <- function(weekly_inputs, occasion_ids) {
+  required <- c(
+    "candidate_pool", "occasion_calendar", "effort_weekly",
+    "detections", "audit"
+  )
+  if (!is.list(weekly_inputs) ||
+      !identical(names(weekly_inputs), required)) {
+    .goal003_stop(
+      "weekly_inputs must be canonical Goal003 weekly inputs."
+    )
+  }
+  if (!is.character(occasion_ids) ||
+      length(occasion_ids) == 0L ||
+      anyNA(occasion_ids) ||
+      any(!nzchar(occasion_ids)) ||
+      anyDuplicated(occasion_ids)) {
+    .goal003_stop(
+      "occasion_ids must be unique, non-empty character identifiers."
+    )
+  }
+  canonical_ids <- weekly_inputs$occasion_calendar$occasion_id
+  if (any(!occasion_ids %in% canonical_ids)) {
+    .goal003_stop("occasion_ids contains an unknown Goal003 occasion.")
+  }
+  canonical_selection <- canonical_ids[canonical_ids %in% occasion_ids]
+  if (!identical(occasion_ids, canonical_selection)) {
+    .goal003_stop(
+      "occasion_ids must follow canonical chronological order."
+    )
+  }
+  prepare_flexirich_g_data(
+    weekly_inputs$candidate_pool,
+    dplyr::filter(
+      weekly_inputs$effort_weekly,
+      occasion_id %in% occasion_ids
+    ),
+    dplyr::filter(
+      weekly_inputs$detections,
+      occasion_id %in% occasion_ids
+    )
+  )
+}
+
 .goal003_season <- function(date) {
   month <- as.integer(format(date, "%m"))
   season <- ifelse(
