@@ -1,6 +1,6 @@
 # Goal 003 — Prospective finite-pool richness validation
 
-Status: active — scientific contract defined; evaluation-data task pending
+Status: active — Task 1 structural contract implemented; candidate review pending
 Defined: 2026-08-10
 
 ## Decision question
