@@ -52,8 +52,9 @@ path has been retired rather than retained as dormant code. The concise
 [closure record](docs/goals/002r-collapsed-unseen-richness/Goal.md) preserves
 the decision and the ingredients carried forward.
 
-Goal001 and Goal002 remain the runnable scientific foundation. The next planned
-stage, Goal003, will be specified separately and will test a simpler,
-regularised finite-pool detection model against transparent richness baselines,
-synthetic truth, and temporal species-discovery validation. No empirical
-Judbury or Huon Ridge analysis is implemented in the repository yet.
+Goal001 and Goal002 remain the runnable scientific foundation. The active
+[Goal003 contract](docs/goals/003-prospective-finite-pool-validation/Goal.md)
+tests a simpler, regularised finite-pool detection model against transparent
+richness baselines, synthetic truth, and temporal species-discovery validation.
+Its first tranche is the evaluation-data contract; no empirical Judbury or
+Huon Ridge analysis is implemented in the repository yet.
