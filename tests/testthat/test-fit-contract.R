@@ -1081,6 +1081,12 @@ testthat::test_that("fit validation rejects unsafe output reuse before sampling"
     fixed = TRUE
   )
 
+  testthat::expect_error(
+    .goal002_output_directory("outputs/goal002r/retired"),
+    "outputs/goal002",
+    fixed = TRUE
+  )
+
   existing <- file.path(
     goal002_test_root(),
     "outputs",

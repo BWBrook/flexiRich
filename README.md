@@ -43,30 +43,17 @@ Rscript scripts/setup_cmdstan.R --install
 
 Generated inference artefacts remain under `outputs/` and are not committed.
 
-## Goal 002R active prototype
+## Current research state
 
-The current Goal002R path is intentionally small and isolated from the
-historical Goal002 pilot machinery. It takes a canonical finite candidate
-pool, partitions detected and all-zero candidates, integrates the common
-all-zero encounter effect by Gauss--Hermite quadrature, and fits the compact
-collapsed Stan model:
+Goal002R tested a collapsed computation for the all-zero members of the finite
+candidate pool. It failed its locked numerical, richness-PMF, and runtime gates;
+the bounded numerical rescue subsequently closed inconclusively. Its executable
+path has been retired rather than retained as dormant code. The concise
+[closure record](docs/goals/002r-collapsed-unseen-richness/Goal.md) preserves
+the decision and the ingredients carried forward.
 
-```sh
-Rscript scripts/run_goal002r_smoke.R
-Rscript scripts/check_goal002r_numerics.R
-Rscript scripts/run_goal002r_recovery.R
-Rscript scripts/run_goal002r_grid.R
-Rscript scripts/run_goal002r_paired_comparison.R
-```
-
-The paired-comparison command runs the prespecified six-case Goal 002 versus
-Goal 002R experiment and writes only its fit directories and six evidence
-files. It refuses to mix a new run into a non-empty paired-comparison output
-directory.
-
-The active scientific objective and bounded paired-comparison plan are recorded
-in [Goal.md](docs/goals/002r-collapsed-unseen-richness/Goal.md) and
-[Plan.md](docs/goals/002r-collapsed-unseen-richness/Plan.md). This is a prototype
-validation surface, not an empirical Judbury or Huon Ridge fit.
-Production fitting defaults to quadrature order 128 and rejects arbitrary
-orders; each CmdStan fit also stops on failed sampler-health diagnostics.
+Goal001 and Goal002 remain the runnable scientific foundation. The next planned
+stage, Goal003, will be specified separately and will test a simpler,
+regularised finite-pool detection model against transparent richness baselines,
+synthetic truth, and temporal species-discovery validation. No empirical
+Judbury or Huon Ridge analysis is implemented in the repository yet.
