@@ -24,6 +24,14 @@ It does not fit or score a richness method.
 - The current public record contains 153 occasions. Its full 153-occasion
   detected pool is the operational long-window reference. It is not known
   ecological truth.
+- Barry confirmed on 10 August 2026 that this pinned 153-occasion extract is
+  the intended final Judbury record for Goal 003.
+- The four-occasion forecast horizon is confirmed because it represents the
+  approximately one-month deployment used in many snapshot camera surveys.
+- All observed effort gaps are retained, including the prolonged near-gridwide
+  camera outage caused by a firmware fault. They are neither imputed nor
+  trimmed away: exact active days determine sampled, partially sampled, and
+  unsampled camera-weeks.
 - The 52-occasion context is supported. A 208-occasion/four-year Judbury
   analysis is not supported by the pinned data and may not be reported.
 
@@ -32,6 +40,13 @@ month versus six months of monitoring contributes to the same future question
 and retains useful prospective replication. Matching the 26-occasion training
 window to a 26-occasion forecast would leave too few non-overlapping outcomes
 for the prespecified empirical uncertainty assessment.
+
+The irregular effort is part of the empirical challenge rather than a data
+defect to be regularised away. Zero-effort weeks remain `NA`, partial weeks
+retain their exact active-day exposure, and future scores remain conditional
+on realised effort. Goal 003 therefore tests inference under the failures a
+real camera programme experiences, without turning camera-uptime forecasting
+into a second modelling problem.
 
 ## Read-only Judbury authority
 
@@ -153,14 +168,18 @@ The committed worksheet is the evidence snapshot because ALA is a mutable
 aggregator. Re-querying it after method results are inspected is prohibited.
 Its pre-review SHA-256 is
 `0e8da17e0657cb446e6797da9fb79fecd22f8b3d85d21f56eb0c5b379a459429`;
-the final reviewed hash will be recorded separately rather than confused with
-this extraction receipt.
+this remains the original extraction receipt. The expanded review template,
+which adds independent JCR-membership and camera-encounter judgements without
+changing the 198 candidate rows or ALA counts, has SHA-256
+`6fae28e315b8bf898cc4e74c7f63c5675cd1bdb2e9083660e2de9e78293a073c`.
+The final reviewed hash will be recorded separately rather than confused with
+either receipt.
 The initial extraction contains:
 
 | Class | Named ALA taxa | Named records | Other records | Review disposition |
 | --- | ---: | ---: | ---: | --- |
-| Mammalia | 25 | 523 | 5 not taxonomically supplied | 23 proposed includes; dolphin and thylacine excluded |
-| Aves | 164 | 15,658 | 209 not taxonomically supplied | all require ground-use review |
+| Mammalia | 25 | 523 | 5 not taxonomically supplied | 23 require JCR and camera review; dolphin and thylacine excluded |
+| Aves | 164 | 15,658 | 209 not taxonomically supplied | all require JCR, ground-use, and camera review |
 | Reptilia | 8 | 44 | 0 | secondary-stratum review only |
 
 `Canis familiaris` is an explicit expert-review row with zero ALA records,
@@ -179,25 +198,58 @@ and its educational account of
 
 Barry reviews the CSV without a Judbury-detection column.
 
-- For birds, `ground_use` becomes one of `common`, `occasional`, `rare`,
-  `none`, or `uncertain`. A primary include requires plausible ground-camera
-  encounter on the forest grid, not merely presence somewhere in the 10 km
-  circle.
-- `primary_pool` becomes `include` or `exclude` for every mammal and bird.
-- `broader_pool` becomes `include` or `exclude` for every mammal and bird;
-  it must contain every primary include and only prespecified borderline
-  additions beyond them.
-- Reptiles remain primary exclusions; `secondary_pool` becomes `include` or
-  `exclude` if the secondary analysis is retained.
+Two judgements are deliberately kept separate.
+
+1. `jcr_gamma_pool` describes ecological membership in the reserve-scale
+   species pool, irrespective of this camera design. Its values are `include`,
+   `borderline`, or `exclude`. Include a species if it plausibly used JCR
+   habitat at least occasionally during the 153-week reference period;
+   `borderline` is for genuine uncertainty or transient use. Species tied to
+   habitat absent from JCR, such as marine or unsuitable wetland taxa, are
+   excluded even when they have records elsewhere in the 10 km circle.
+2. `camera_encounter_class` describes natural-history plausibility of encounter
+   by the ground-camera array. Its values are `routine`, `occasional`, `rare`,
+   `negligible`, or `uncertain`. This is an ordinal sampling-frame judgement,
+   not an estimate of detection probability. `Rare` means a non-zero but
+   exceptional ground-camera encounter; `negligible` means the species is
+   effectively outside this camera method's sampling frame.
+
+For birds, `ground_use` additionally becomes one of `common`, `occasional`,
+`rare`, `none`, or `uncertain`. It records the natural-history basis for the
+camera judgement; a bird can belong to the JCR gamma pool while being outside
+the ground-camera pool.
+
+Barry need only edit the applicable review fields above, plus any explanatory
+`decision_reason`, `reviewer`, and `review_date`; the derived pool columns can
+remain `review`. After those fields are completed, the primary and sensitivity
+pools are generated by the following frozen rules and returned for
+confirmation:
+
+- `primary_pool = include` for mammals and birds only when
+  `jcr_gamma_pool = include` and `camera_encounter_class` is `routine` or
+  `occasional`; otherwise it is excluded;
+- `broader_pool` contains every primary include and additionally admits
+  mammals and birds classed `borderline` for JCR use, `rare` for camera
+  encounter, or `uncertain` for camera encounter, but never a JCR exclusion or a
+  `negligible` camera encounter; and
+- reptiles remain primary exclusions. If the secondary reptile analysis is
+  retained, `secondary_pool = include` uses the same strict rule as the
+  primary pool.
+
+The JCR gamma pool is a scientifically useful reserve-wide reference, not a
+replacement estimand for Goal 003. The model's primary target remains
+grid-level **camera-encounter richness**. Reporting both prevents a camera
+sampling frame from being mistaken for all vertebrate diversity in JCR.
+
 - Any authoritative addition absent from ALA is added with its source and an
   explicit reason. The focal detection history is not a permitted reason.
-- Borderline defensible mammal/bird exclusions define the single broader-pool
-  sensitivity; they are not silently moved into the primary pool.
-- Reviewer and review date are completed for every decided row.
+- `decision_reason` records any non-obvious classification; `reviewer` and
+  `review_date` are completed for every decided row.
 
-The pool freezes only after there are no `review` values, no unexplained
-duplicate names or concept IDs, and every include has an external evidence
-reason. Its SHA-256 is then recorded here before Task 2 begins.
+The pool freezes only after there are no `review` values in the applicable
+review fields, no unexplained duplicate names or concept IDs, every include
+has an external evidence reason, and the derived columns satisfy the rules
+above. Its SHA-256 is then recorded here before Task 2 begins.
 
 ## Prospective validation folds
 
@@ -242,10 +294,7 @@ Task 1 is not closed until:
 
 1. Barry completes the mammal/bird and optional reptile review worksheet;
 2. the final primary and broader-sensitivity pools pass the freeze rule;
-3. Barry confirms that the pinned 153-week public Judbury extract is the
-   intended empirical record, or supplies a newer public extract before any
-   baseline result is computed; and
-4. the final pool hash and source-record decision are recorded in this file.
+3. the final reviewed pool hash is recorded in this file.
 
 Task 2 may not begin before that review. No further engineering is needed at
 this gate.

@@ -76,6 +76,19 @@ external to the focal Judbury detection history. The primary pool will use:
 - mammals plausibly detectable by ground-based cameras; and
 - birds independently flagged as commonly or occasionally ground-using.
 
+Candidate review separates two quantities that cameras otherwise blur:
+
+- membership in the reserve-wide JCR gamma pool, based on habitat and
+  natural-history plausibility; and
+- membership in the narrower ground-camera sampling frame, based on a
+  prespecified camera-encounter class.
+
+The former can contain species that are effectively undetectable by this
+camera design. It is retained as ecological context; the Goal 003 model still
+targets grid-level camera-encounter richness. The primary and single broader
+camera pools are derived from the two review axes by a frozen rule rather than
+chosen after viewing Judbury detections.
+
 Records originating from the focal Judbury monitoring programme must not be
 used to justify candidate inclusion. Source dates, spatial rules, taxonomic
 decisions, exclusions, and bird ground-use classifications are recorded. The
@@ -106,10 +119,13 @@ operational table.
   mapping to nominal station or camera-position units is frozen before model
   fitting and never selected by predictive performance.
 - Candidate species with no detections remain explicit all-zero histories.
+- Real operational gaps, including prolonged multi-camera failure, are
+  retained. Zero-effort weeks are unsampled and partial weeks retain exact
+  active-day exposure; no gap is imputed into a non-detection.
 
 The primary short windows are four occasions (approximately one month) and 26
-occasions (approximately six months). Longer windows, including 52 and 208
-occasions where supported, describe the sampling-intensity curve and provide
+occasions (approximately six months). A 52-occasion window and the full
+153-occasion Judbury record describe the sampling-intensity curve and provide
 validation context rather than replacing the short-window decision.
 
 ## Transparent comparators
