@@ -1,6 +1,6 @@
 # Goal 003 — Prospective finite-pool richness validation
 
-Status: active — Task 1 structural contract implemented; candidate review pending
+Status: active — Task 1 complete; Task 2 ready
 Defined: 2026-08-10
 
 ## Decision question
@@ -332,7 +332,7 @@ success through additional cutoffs, alternative horizons, or post hoc pooling.
 - Goal002 and Goal002R outcomes are historical and are not rescored.
 - The candidate pool is external, finite, named, and frozen before scoring.
 - Seven-day incidence and exact active effort are common to all methods.
-- The four-year detected pool is a validation reference, not known truth.
+- The full 153-week detected pool is a validation reference, not known truth.
 - Synthetic truth never enters fitted inputs.
 - Judbury is the primary development/validation dataset.
 - Huon Ridge is private external validation, with no point locations committed.
@@ -370,6 +370,5 @@ or condensed when that tranche closes.
 
 ## Immediate stopping point
 
-The next tranche is Task 1 only: specify and validate the evaluation-data and
-candidate-pool contract. Baseline or model implementation begins only after
-that contract and the feasible temporal-validation design have been reviewed.
+Task 1 is complete. The next tranche is Task 2: implement and freeze the
+transparent baselines before writing or fitting the FlexiRich candidate.

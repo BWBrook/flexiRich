@@ -56,8 +56,8 @@ Goal001 and Goal002 remain the runnable scientific foundation. The active
 [Goal003 contract](docs/goals/003-prospective-finite-pool-validation/Goal.md)
 tests a simpler, regularised finite-pool detection model against transparent
 richness baselines, synthetic truth, and temporal species-discovery validation.
-Its first tranche is the evaluation-data contract; no empirical Judbury or
-Huon Ridge analysis is implemented in the repository yet. The provisional
+Its evaluation-data contract and externally reviewed candidate pool are now
+frozen; no empirical model has yet been fitted. The complete
 [Task 1 contract](docs/goals/003-prospective-finite-pool-validation/EvaluationDataContract.md)
-and candidate-review worksheet are ready for scientific review before any
-baseline is run.
+authorises the next tranche: implement and freeze the transparent baselines
+before the FlexiRich candidate is written or fitted.

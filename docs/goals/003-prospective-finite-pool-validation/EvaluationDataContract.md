@@ -1,6 +1,6 @@
 # Goal 003 — Evaluation-data contract
 
-Status: **provisional at the candidate-pool review gate**
+Status: **complete — candidate pool frozen on 2026-08-10**
 Prepared: 2026-08-10
 
 This is the sole Task 1 data and temporal-validation specification. It fixes
@@ -142,9 +142,10 @@ candidate after viewing the temporal outcomes.
 
 ## External candidate-pool evidence
 
-The review worksheet is
-[`config/goal003_candidate_pool_review.csv`](../../../config/goal003_candidate_pool_review.csv).
-It was created without joining, flagging, or sorting by Judbury detections.
+The frozen candidate pool is
+[`config/goal003_candidate_pool.csv`](../../../config/goal003_candidate_pool.csv).
+Its review template was created without joining, flagging, or sorting by
+Judbury detections.
 
 The Atlas of Living Australia occurrence API was queried on 2026-08-10 using
 its default quality filtering:
@@ -172,8 +173,8 @@ this remains the original extraction receipt. The expanded review template,
 which adds independent JCR-membership and camera-encounter judgements without
 changing the 198 candidate rows or ALA counts, has SHA-256
 `6fae28e315b8bf898cc4e74c7f63c5675cd1bdb2e9083660e2de9e78293a073c`.
-The final reviewed hash will be recorded separately rather than confused with
-either receipt.
+The final reviewed hash is recorded in the frozen result below rather than
+confused with either receipt.
 The initial extraction contains:
 
 | Class | Named ALA taxa | Named records | Other records | Review disposition |
@@ -184,7 +185,8 @@ The initial extraction contains:
 
 `Canis familiaris` is an explicit expert-review row with zero ALA records,
 added from the surrounding settled/rural site context rather than from focal
-detections. Its inclusion and taxonomic identifier remain to be confirmed.
+detections. The expert review includes it in the primary pool; its taxon concept
+identifier remains blank because it was not supplied by the ALA extraction.
 
 Evidence services and authoritative context are documented by the
 [ALA occurrence API](https://docs.ala.org.au/openapi/index.html?urls.primaryName=occurrences),
@@ -251,6 +253,36 @@ review fields, no unexplained duplicate names or concept IDs, every include
 has an external evidence reason, and the derived columns satisfy the rules
 above. Its SHA-256 is then recorded here before Task 2 begins.
 
+### Frozen pool result
+
+Barry completed the expert review on 10 August 2026. The returned worksheet
+had reordered the linked identity-and-review columns while leaving the
+template's derived columns in their original row positions. Finalisation
+therefore rejoined the five expert fields to the immutable extraction snapshot
+by unique `scientific_name`, restored the canonical evidence and row order,
+and recomputed every derived pool field. No expert classification was changed.
+The two ground-use synonyms supplied in the review were normalised from
+`routine` to `common` and from `negligible` to `none`.
+
+| Class | JCR include | JCR borderline | JCR exclude | Primary camera pool | Broader camera pool | Secondary pool |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Mammalia | 18 | 4 | 4 | 17 | 21 | — |
+| Aves | 42 | 43 | 79 | 33 | 85 | — |
+| Reptilia | 7 | 1 | 0 | — | — | 2 |
+| **All taxa** | **67** | **48** | **83** | **50** | **106** | **2** |
+
+The final file has 198 unique scientific names, no unresolved review values,
+no duplicated nonblank taxon concept identifiers, complete evidence reasons,
+and a broader pool containing every primary include. Its frozen SHA-256 is
+`60c8900c1904bafa34340e8ea7e2a44fc819836f76746fc7ee80c484166608db`.
+
+Only after that freeze, the 27 named labels in the pinned Judbury taxon table
+were joined by genus and species. All resolved exactly once. Twenty-six belong
+to the primary pool; `Zanda funerea` (yellow-tailed black-cockatoo) is the sole
+broader-only label because its JCR membership is included but its camera
+encounter class is `rare`. `Unknown_Animal` remains outside every pool. This
+post-freeze reconciliation did not alter the candidate review.
+
 ## Prospective validation folds
 
 The frozen fold manifest is
@@ -288,13 +320,9 @@ season-year blocks. Both current durations pass that pre-result check. Wide
 intervals still yield an inconclusive empirical decision; they do not license
 additional cutoffs or overlapping future outcomes.
 
-## Remaining Task 1 gate
+## Task 1 closure
 
-Task 1 is not closed until:
-
-1. Barry completes the mammal/bird and optional reptile review worksheet;
-2. the final primary and broader-sensitivity pools pass the freeze rule;
-3. the final reviewed pool hash is recorded in this file.
-
-Task 2 may not begin before that review. No further engineering is needed at
-this gate.
+Task 1 is complete. The source record, occasion length, training windows,
+four-occasion forecast horizon, operational-effort treatment, candidate-pool
+rules, expert classifications, derived pools, fold manifest, and frozen hashes
+are all fixed before any baseline result is computed. Task 2 may now begin.
