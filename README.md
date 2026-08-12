@@ -43,6 +43,20 @@ Rscript scripts/setup_cmdstan.R --install
 
 Generated inference artefacts remain under `outputs/` and are not committed.
 
+## Goal 003
+
+The current finite-pool candidate and comparator can be checked with:
+
+```sh
+Rscript scripts/run_tests.R
+Rscript scripts/check_goal003_occupancy_model.R
+Rscript scripts/check_goal003_flexirich_model.R
+```
+
+The frozen prior-predictive and synthetic smoke runners are non-overwriting
+analysis entry points. Stan-intensive batches run on `deep-server` from an
+exact committed state; generated artefacts remain under `outputs/`.
+
 ## Current research state
 
 Goal002R tested a collapsed computation for the all-zero members of the finite
@@ -57,10 +71,12 @@ Goal001 and Goal002 remain the runnable scientific foundation. The active
 tests a simpler, regularised finite-pool detection model against transparent
 richness baselines, synthetic truth, and temporal species-discovery validation.
 Its evaluation-data contract and externally reviewed candidate pool are now
-frozen, and its transparent comparator suite is complete. The approved Task 3
-design now specifies one regularised finite-pool FlexiRich candidate; no
+frozen, its transparent comparator suite is complete, and its single
+regularised finite-pool candidate has passed prior-predictive, mathematical,
+and synthetic end-to-end execution checks. This establishes a trustworthy
+candidate implementation, not calibration or predictive superiority; no
 candidate model has yet been fitted to empirical Judbury outcomes. The complete
 [Task 1 contract](docs/goals/003-prospective-finite-pool-validation/EvaluationDataContract.md)
 and [Goal003 contract](docs/goals/003-prospective-finite-pool-validation/Goal.md)
-authorise the next tranche: write the focused implementation plan and build the
-candidate without reopening the frozen baselines.
+authorise the next tranche: freeze the Task 4 synthetic calibration and
+misspecification manifest before launching any calibration batch.

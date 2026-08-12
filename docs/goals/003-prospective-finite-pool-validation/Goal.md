@@ -1,6 +1,6 @@
 # Goal 003 — Prospective finite-pool richness validation
 
-Status: active — Tasks 1–2 complete; Task 3 design approved
+Status: active — Tasks 1–3 complete; Task 4 manifest next
 Defined: 2026-08-10
 
 ## Decision question
@@ -325,6 +325,29 @@ site-level states, temporal dynamics, spatial borrowing, or abundance
 interpretation. If prior prediction is materially pathological, pause for a
 scientific decision rather than tuning against real data.
 
+Completed 2026-08-13. The lean candidate, shared sampler boundary, exact
+Poisson-binomial summaries, and synthetic-only runners were implemented at
+commit `9fd0546b5388d7130ca1f5f420eb11e1d652c21d`. The independent Stan/R
+bridges, full unit suite, locked environment check, and occupancy regression
+checks all passed.
+
+The frozen prior-predictive run used 50 candidates, nine cameras, 50,000 draws
+per profile, and no Judbury outcomes. Under the primary prior, median finite-
+pool richness was 25, mean detected richness was 21.69 after four complete
+weeks and 24.41 after 26 weeks, and the mean fraction of members with less than
+0.05 probability of any 26-week grid detection was 0.0006. All numerical
+invariants passed. The three prespecified one-factor sensitivities broadened
+the intended axes without making a typically large invisible tail.
+
+The exact-commit synthetic smoke completed on `deep-server` under the primary
+sampler without rescue: zero divergences, zero maximum-tree-depth hits, minimum
+E-BFMI 0.718, maximum R-hat 1.0046, minimum bulk ESS 1,013, and minimum tail ESS
+1,079. Richness and future-discovery PMFs both normalised to one and the
+richness support matched the 12-candidate pool. Synthetic truth was excluded
+from fitted inputs and no empirical outcomes were used. This closes executable
+and numerical verification only; it is not evidence of calibration, recovery,
+or superiority over a comparator. Those questions begin with Task 4.
+
 ### Heavy-compute operating rule
 
 Unit tests, mathematical bridges, and genuinely small smoke checks may run on
@@ -488,7 +511,8 @@ or condensed when that tranche closes.
 
 ## Immediate stopping point
 
-Tasks 1 and 2 are complete and the Task 3 scientific design is approved. The
-next tranche is a focused TDD implementation plan followed by the single
-minimal FlexiRich candidate, without reopening baseline settings or fitting it
-to prospective Judbury outcomes.
+Tasks 1–3 are complete. The next tranche is Task 4: freeze the bounded synthetic
+calibration and misspecification manifest, including cell definitions, seed
+rules, scoring outputs, screening size, and terminal-fit accounting, before
+launching any simulation batch. Baseline settings and the Task 3 candidate
+remain frozen, and prospective Judbury outcomes remain unopened.
