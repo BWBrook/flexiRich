@@ -325,6 +325,42 @@ testthat::test_that("Poisson-binomial PMFs cover empty, boundary, and hand cases
   testthat::expect_equal(sum(general), 1, tolerance = 1e-15)
 })
 
+testthat::test_that("draw-level Poisson-binomial mixtures have exact hand values", {
+  probabilities <- rbind(
+    c(1, 0.2),
+    c(1, 0.6)
+  )
+  mixture <- .goal003_mean_poisson_binomial(probabilities)
+
+  testthat::expect_identical(mixture$richness, 0:2)
+  testthat::expect_equal(
+    mixture$probability,
+    c(0, 0.6, 0.4),
+    tolerance = 1e-15
+  )
+  testthat::expect_equal(sum(mixture$probability), 1, tolerance = 1e-15)
+
+  empty <- .goal003_mean_poisson_binomial(
+    matrix(numeric(), nrow = 3L, ncol = 0L)
+  )
+  testthat::expect_identical(empty$richness, 0L)
+  testthat::expect_identical(empty$probability, 1)
+})
+
+testthat::test_that("posterior PMF averaging belongs to inference mathematics", {
+  root <- if (dir.exists("R")) "." else file.path("..", "..")
+  module <- new.env(parent = globalenv())
+  sys.source(file.path(root, "R", "infer_math.R"), envir = module)
+
+  testthat::expect_true(
+    exists(
+      ".goal003_mean_poisson_binomial",
+      envir = module,
+      inherits = FALSE
+    )
+  )
+})
+
 testthat::test_that("likelihood functions reject malformed arguments", {
   fixture <- goal002_oracle_fixture()
   member_ll <- c(-1, -2, -3, -4)

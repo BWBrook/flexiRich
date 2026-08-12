@@ -359,3 +359,31 @@ poisson_binomial_pmf <- function(probabilities) {
   pmf <- pmf / total
   stats::setNames(pmf, as.character(0:length(probabilities)))
 }
+
+.goal003_mean_poisson_binomial <- function(probability_draws) {
+  if (!is.matrix(probability_draws) ||
+      !is.numeric(probability_draws) ||
+      nrow(probability_draws) < 1L ||
+      anyNA(probability_draws) ||
+      any(!is.finite(probability_draws)) ||
+      any(probability_draws < 0 | probability_draws > 1)) {
+    .stop_invalid_infer_math(
+      "probability_draws must be a non-empty finite matrix in [0, 1]."
+    )
+  }
+  if (ncol(probability_draws) == 0L) {
+    return(tibble::tibble(richness = 0L, probability = 1))
+  }
+  pmf <- vapply(
+    seq_len(nrow(probability_draws)),
+    function(draw) poisson_binomial_pmf(probability_draws[draw, ]),
+    numeric(ncol(probability_draws) + 1L)
+  )
+  mean_probability <- rowMeans(pmf)
+  mean_probability <- mean_probability / sum(mean_probability)
+  names(mean_probability) <- NULL
+  tibble::tibble(
+    richness = seq.int(0L, ncol(probability_draws)),
+    probability = mean_probability
+  )
+}

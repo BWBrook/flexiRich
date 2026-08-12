@@ -231,31 +231,6 @@ goal003_occupancy_conditionals <- function(data, psi, rate) {
   list(member_ll = member_ll, q_site = q_site, q_grid = q_grid)
 }
 
-.goal003_mean_poisson_binomial <- function(probability_draws) {
-  if (!is.matrix(probability_draws) ||
-      !is.numeric(probability_draws) ||
-      nrow(probability_draws) < 1L ||
-      anyNA(probability_draws) ||
-      any(!is.finite(probability_draws)) ||
-      any(probability_draws < 0 | probability_draws > 1)) {
-    .goal003_occupancy_stop(
-      "probability_draws must be a non-empty finite matrix in [0, 1]."
-    )
-  }
-  pmf <- vapply(
-    seq_len(nrow(probability_draws)),
-    function(draw) poisson_binomial_pmf(probability_draws[draw, ]),
-    numeric(ncol(probability_draws) + 1L)
-  )
-  mean_probability <- rowMeans(pmf)
-  mean_probability <- mean_probability / sum(mean_probability)
-  names(mean_probability) <- NULL
-  tibble::tibble(
-    richness = seq.int(0L, ncol(probability_draws)),
-    probability = mean_probability
-  )
-}
-
 #' Summarise conventional-occupancy posterior probability draws
 #'
 #' @param q_site_draws Numeric array with dimensions draw, candidate, camera.
@@ -374,236 +349,16 @@ summarise_goal003_occupancy_draws <- function(
   )
 }
 
-.goal003_project_root <- function() {
-  path <- normalizePath(getwd(), mustWork = TRUE)
-  repeat {
-    if (file.exists(file.path(path, "R", "goal003_occupancy.R")) &&
-        file.exists(file.path(
-          path,
-          "stan",
-          "goal003_community_occupancy.stan"
-        ))) {
-      return(path)
-    }
-    parent <- dirname(path)
-    if (identical(parent, path)) {
-      break
-    }
-    path <- parent
-  }
-  .goal003_occupancy_stop(
-    "Could not locate the flexiRich repository root."
-  )
-}
-
 #' Compile the frozen Goal003 conventional-occupancy model
 #'
 #' Compilation is cached by Stan-source hash beneath ignored Goal003 outputs;
 #' no compiler artefact is written beside the tracked source.
 compile_goal003_occupancy_model <- function(force_recompile = FALSE) {
-  if (!is.logical(force_recompile) ||
-      length(force_recompile) != 1L ||
-      is.na(force_recompile)) {
-    .goal003_occupancy_stop(
-      "force_recompile must be exactly TRUE or FALSE."
-    )
-  }
-  check_goal002_cmdstan()
-  root <- .goal003_project_root()
-  source <- file.path(root, "stan", "goal003_community_occupancy.stan")
-  source_hash <- digest::digest(
-    file = source,
-    algo = "sha256",
-    serialize = FALSE
-  )
-  hash_prefix <- substr(source_hash, 1L, 16L)
-  cache <- file.path(root, "outputs", "goal003", "occupancy", "cmdstan")
-  source_dir <- file.path(cache, "source", hash_prefix)
-  bin_dir <- file.path(cache, "bin")
-  dir.create(source_dir, recursive = TRUE, showWarnings = FALSE)
-  dir.create(bin_dir, recursive = TRUE, showWarnings = FALSE)
-  copied_source <- file.path(source_dir, basename(source))
-  if (!file.exists(copied_source)) {
-    if (!file.copy(source, copied_source, overwrite = FALSE)) {
-      .goal003_occupancy_stop(
-        "Could not copy the occupancy Stan source into its cache."
-      )
-    }
-  }
-  copied_hash <- digest::digest(
-    file = copied_source,
-    algo = "sha256",
-    serialize = FALSE
-  )
-  if (!identical(copied_hash, source_hash)) {
-    .goal003_occupancy_stop(
-      "The cached occupancy Stan source does not match its tracked source."
-    )
-  }
-  executable <- file.path(
-    bin_dir,
-    paste0("goal003-community-occupancy-", hash_prefix)
-  )
-  model <- cmdstanr::cmdstan_model(
-    stan_file = copied_source,
-    exe_file = executable,
-    compile = FALSE
-  )
-  model$compile(
-    quiet = TRUE,
-    force_recompile = force_recompile || !file.exists(executable)
-  )
-  if (!file.exists(executable)) {
-    .goal003_occupancy_stop(
-      "CmdStan did not produce the occupancy executable."
-    )
-  }
-  model
-}
-
-.goal003_occupancy_diagnostics <- function(fit, sampler_profile) {
-  thresholds <- goal003_occupancy_diagnostic_thresholds()
-  monitored <- c(
-    "mu_psi", "sigma_psi", "mu_log_rate", "sigma_log_rate"
-  )
-  summary <- tryCatch(
-    fit$summary(variables = monitored),
-    error = function(e) NULL
-  )
-  sampler <- tryCatch(
-    fit$sampler_diagnostics(inc_warmup = FALSE, format = "df"),
-    error = function(e) NULL
-  )
-  reasons <- character()
-  metrics <- list(
-    divergences = NA_integer_,
-    treedepth_hits = NA_integer_,
-    min_ebfmi = NA_real_,
-    max_rhat = NA_real_,
-    min_bulk_ess = NA_real_,
-    min_tail_ess = NA_real_
-  )
-  required_summary <- c("rhat", "ess_bulk", "ess_tail")
-  required_sampler <- c(
-    "divergent__", "treedepth__", "energy__", ".chain", ".iteration"
-  )
-  if (is.null(summary) || any(!required_summary %in% names(summary))) {
-    reasons <- c(reasons, "invalid parameter-summary diagnostics")
-  } else {
-    values <- unlist(summary[required_summary], use.names = FALSE)
-    if (anyNA(values) || any(!is.finite(values))) {
-      reasons <- c(reasons, "non-finite parameter-summary diagnostics")
-    } else {
-      metrics$max_rhat <- max(summary$rhat)
-      metrics$min_bulk_ess <- min(summary$ess_bulk)
-      metrics$min_tail_ess <- min(summary$ess_tail)
-      if (metrics$max_rhat > thresholds$max_rhat) {
-        reasons <- c(reasons, "R-hat exceeds 1.01")
-      }
-      if (metrics$min_bulk_ess < thresholds$min_bulk_ess) {
-        reasons <- c(reasons, "bulk ESS is below 400")
-      }
-      if (metrics$min_tail_ess < thresholds$min_tail_ess) {
-        reasons <- c(reasons, "tail ESS is below 400")
-      }
-    }
-  }
-  sampler <- if (is.null(sampler)) NULL else as.data.frame(sampler)
-  if (is.null(sampler) || any(!required_sampler %in% names(sampler))) {
-    reasons <- c(reasons, "invalid sampler diagnostics")
-  } else {
-    sampler <- sampler[required_sampler]
-    values <- unlist(sampler, use.names = FALSE)
-    if (nrow(sampler) == 0L || anyNA(values) || any(!is.finite(values))) {
-      reasons <- c(reasons, "non-finite sampler diagnostics")
-    } else {
-      metrics$divergences <- as.integer(sum(sampler$divergent__))
-      metrics$treedepth_hits <- as.integer(sum(
-        sampler$treedepth__ >= sampler_profile$max_treedepth
-      ))
-      chains <- sort(unique(as.integer(sampler$.chain)))
-      ebfmi <- vapply(chains, function(chain) {
-        rows <- sampler$.chain == chain
-        energy <- sampler$energy__[rows][order(sampler$.iteration[rows])]
-        denominator <- stats::var(energy)
-        if (!is.finite(denominator) || denominator <= 0) {
-          return(NA_real_)
-        }
-        mean(diff(energy)^2) / denominator
-      }, numeric(1))
-      if (anyNA(ebfmi) || any(!is.finite(ebfmi))) {
-        reasons <- c(reasons, "undefined E-BFMI")
-      } else {
-        metrics$min_ebfmi <- min(ebfmi)
-        if (metrics$min_ebfmi < thresholds$min_ebfmi) {
-          reasons <- c(reasons, "E-BFMI is below 0.3")
-        }
-      }
-      if (metrics$divergences > thresholds$max_divergences) {
-        reasons <- c(reasons, "divergent transitions")
-      }
-      if (metrics$treedepth_hits > thresholds$max_treedepth_hits) {
-        reasons <- c(reasons, "maximum-treedepth transitions")
-      }
-    }
-  }
-  list(
-    clean = length(reasons) == 0L,
-    metrics = metrics,
-    reasons = unique(reasons)
-  )
-}
-
-.goal003_occupancy_attempt <- function(
-  model,
-  data,
-  sampler_profile,
-  seed,
-  output_dir,
-  attempt_id,
-  refresh
-) {
-  dir.create(output_dir, recursive = TRUE, showWarnings = FALSE)
-  started <- proc.time()[["elapsed"]]
-  fit <- tryCatch(
-    suppressMessages(model$sample(
-      data = data$stan_data,
-      seed = seed,
-      chains = sampler_profile$chains,
-      parallel_chains = sampler_profile$parallel_chains,
-      iter_warmup = sampler_profile$iter_warmup,
-      iter_sampling = sampler_profile$iter_sampling,
-      adapt_delta = sampler_profile$adapt_delta,
-      max_treedepth = sampler_profile$max_treedepth,
-      refresh = refresh,
-      sig_figs = 18L,
-      diagnostics = c("divergences", "treedepth"),
-      show_messages = FALSE,
-      output_dir = output_dir,
-      output_basename = attempt_id
-    )),
-    error = function(e) e
-  )
-  elapsed <- proc.time()[["elapsed"]] - started
-  if (inherits(fit, "error")) {
-    return(list(
-      attempt_id = attempt_id,
-      profile = sampler_profile,
-      elapsed_seconds = as.numeric(elapsed),
-      diagnostics = list(
-        clean = FALSE,
-        metrics = NULL,
-        reasons = conditionMessage(fit)
-      ),
-      fit = NULL
-    ))
-  }
-  list(
-    attempt_id = attempt_id,
-    profile = sampler_profile,
-    elapsed_seconds = as.numeric(elapsed),
-    diagnostics = .goal003_occupancy_diagnostics(fit, sampler_profile),
-    fit = fit
+  .goal003_compile_model(
+    stan_file = file.path("stan", "goal003_community_occupancy.stan"),
+    cache_id = "occupancy",
+    executable_stem = "goal003-community-occupancy",
+    force_recompile = force_recompile
   )
 }
 
@@ -680,39 +435,37 @@ fit_goal003_occupancy <- function(
 
   model <- compile_goal003_occupancy_model()
   profiles <- goal003_occupancy_sampler_profiles()
-  primary <- .goal003_occupancy_attempt(
-    model,
-    data,
-    profiles$primary,
-    seed,
-    file.path(absolute_output, "primary"),
-    "primary",
-    as.integer(refresh)
+  monitored <- c("mu_psi", "sigma_psi", "mu_log_rate", "sigma_log_rate")
+  thresholds <- goal003_occupancy_diagnostic_thresholds()
+  primary <- .goal003_model_attempt(
+    model = model,
+    stan_data = data$stan_data,
+    sampler_profile = profiles$primary,
+    diagnostic_thresholds = thresholds,
+    monitored_variables = monitored,
+    seed = seed,
+    output_dir = file.path(absolute_output, "primary"),
+    attempt_id = "primary",
+    refresh = as.integer(refresh)
   )
   attempts <- list(primary = primary)
-  if (isTRUE(primary$diagnostics$clean)) {
-    status <- "primary_clean"
-  } else if (rescue) {
-    rescue_attempt <- .goal003_occupancy_attempt(
-      model,
-      data,
-      profiles$rescue,
-      seed + 1L,
-      file.path(absolute_output, "rescue"),
-      "rescue",
-      as.integer(refresh)
+  rescue_attempt <- NULL
+  if (!isTRUE(primary$diagnostics$clean) && rescue) {
+    rescue_attempt <- .goal003_model_attempt(
+      model = model,
+      stan_data = data$stan_data,
+      sampler_profile = profiles$rescue,
+      diagnostic_thresholds = thresholds,
+      monitored_variables = monitored,
+      seed = seed + 1L,
+      output_dir = file.path(absolute_output, "rescue"),
+      attempt_id = "rescue",
+      refresh = as.integer(refresh)
     )
     attempts$rescue <- rescue_attempt
-    status <- if (isTRUE(rescue_attempt$diagnostics$clean)) {
-      "rescue_clean"
-    } else {
-      "final_nonclean"
-    }
-  } else {
-    status <- "final_nonclean"
   }
   list(
-    terminal_status = status,
+    terminal_status = .goal003_terminal_status(primary, rescue_attempt),
     data = data,
     prior = goal003_occupancy_prior(),
     output_dir = absolute_output,
@@ -737,47 +490,6 @@ fit_goal003_occupancy <- function(
     "rescue"
   }
   result$attempts[[attempt_name]]$fit
-}
-
-.goal003_future_active_days <- function(future_effort, camera_ids) {
-  future_effort <- .infer_table_contract(
-    future_effort,
-    "future_effort",
-    c("camera_id", "occasion_id", "active_days")
-  )
-  future_effort$camera_id <- .infer_identifier_contract(
-    future_effort$camera_id,
-    "future_effort$camera_id"
-  )
-  future_effort$occasion_id <- .infer_identifier_contract(
-    future_effort$occasion_id,
-    "future_effort$occasion_id"
-  )
-  future_effort$active_days <- .infer_integer_contract(
-    future_effort$active_days,
-    "future_effort$active_days",
-    0L,
-    7L
-  )
-  occasions <- .infer_lexical_sort(unique(future_effort$occasion_id))
-  if (!identical(.infer_lexical_sort(unique(future_effort$camera_id)), camera_ids) ||
-      length(occasions) == 0L) {
-    .goal003_occupancy_stop(
-      "future_effort cameras must exactly match the fitted camera IDs."
-    )
-  }
-  .infer_complete_grid(
-    future_effort,
-    c("camera_id", "occasion_id"),
-    list(camera_ids, occasions),
-    "future_effort"
-  )
-  totals <- future_effort |>
-    dplyr::summarise(active_days = sum(active_days), .by = camera_id)
-  stats::setNames(
-    as.numeric(totals$active_days[match(camera_ids, totals$camera_id)]),
-    camera_ids
-  )
 }
 
 #' Summarise a terminal-clean occupancy fit and optional future effort

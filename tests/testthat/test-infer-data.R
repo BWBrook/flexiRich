@@ -659,6 +659,42 @@ testthat::test_that("audit arithmetic is exact and all-zero histories remain", {
   testthat::expect_identical(sum(data$grouped$n_detected), 2L)
 })
 
+testthat::test_that("future effort totals preserve the complete camera grid", {
+  cameras <- c("cam_a", "cam_b")
+  effort <- tidyr::expand_grid(
+    camera_id = cameras,
+    occasion_id = c("future_1", "future_2")
+  ) |>
+    dplyr::mutate(active_days = c(7L, 0L, 2L, 7L))
+
+  testthat::expect_identical(
+    .goal003_future_active_days(effort, cameras),
+    c(cam_a = 7, cam_b = 9)
+  )
+  testthat::expect_error(
+    .goal003_future_active_days(effort[-1L, ], cameras),
+    "complete",
+    fixed = TRUE
+  )
+  foreign <- effort
+  foreign$camera_id[foreign$camera_id == "cam_b"] <- "cam_c"
+  testthat::expect_error(
+    .goal003_future_active_days(foreign, cameras),
+    "exactly match",
+    fixed = TRUE
+  )
+})
+
+testthat::test_that("future effort aggregation belongs to inference data", {
+  root <- if (dir.exists("R")) "." else file.path("..", "..")
+  module <- new.env(parent = globalenv())
+  sys.source(file.path(root, "R", "infer_data.R"), envir = module)
+
+  testthat::expect_true(
+    exists(".goal003_future_active_days", envir = module, inherits = FALSE)
+  )
+})
+
 testthat::test_that("returned-object validation detects structural corruption", {
   data <- .prepare_infer_fixture()
   testthat::expect_true(validate_flexirich_g_data(data))

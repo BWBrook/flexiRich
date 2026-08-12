@@ -212,6 +212,49 @@
   sweep(H, 2L, sqrt(colSums(H^2)), "/")
 }
 
+.goal003_future_active_days <- function(future_effort, camera_ids) {
+  future_effort <- .infer_table_contract(
+    future_effort,
+    "future_effort",
+    c("camera_id", "occasion_id", "active_days")
+  )
+  future_effort$camera_id <- .infer_identifier_contract(
+    future_effort$camera_id,
+    "future_effort$camera_id"
+  )
+  future_effort$occasion_id <- .infer_identifier_contract(
+    future_effort$occasion_id,
+    "future_effort$occasion_id"
+  )
+  future_effort$active_days <- .infer_integer_contract(
+    future_effort$active_days,
+    "future_effort$active_days",
+    0L,
+    7L
+  )
+  occasions <- .infer_lexical_sort(unique(future_effort$occasion_id))
+  if (!identical(
+    .infer_lexical_sort(unique(future_effort$camera_id)),
+    camera_ids
+  ) || length(occasions) == 0L) {
+    .stop_invalid_inference_data(
+      "future_effort cameras must exactly match the fitted camera IDs."
+    )
+  }
+  .infer_complete_grid(
+    future_effort,
+    c("camera_id", "occasion_id"),
+    list(camera_ids, occasions),
+    "future_effort"
+  )
+  totals <- future_effort |>
+    dplyr::summarise(active_days = sum(active_days), .by = camera_id)
+  stats::setNames(
+    as.numeric(totals$active_days[match(camera_ids, totals$camera_id)]),
+    camera_ids
+  )
+}
+
 .group_inference_observations <- function(
   observed,
   candidate_ids,
