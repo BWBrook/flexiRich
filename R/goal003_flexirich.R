@@ -620,12 +620,11 @@ simulate_goal003_flexirich_prior <- function(
   }
   one_day <- -expm1(-rate_values)
   seven_day <- -expm1(-7 * rate_values)
-  total_members <- sum(membership)
-  invisible_fraction <- if (total_members == 0L) {
-    0
-  } else {
-    sum(membership == 1L & p_detect_26 < 0.05) / total_members
-  }
+  invisible_fraction <- ifelse(
+    true_richness == 0L,
+    0,
+    invisible_26 / true_richness
+  )
   distribution_summary <- dplyr::bind_rows(
     summarise_distribution("omega", omega),
     summarise_distribution("mu_alpha", mu_alpha),
@@ -685,7 +684,8 @@ simulate_goal003_flexirich_prior <- function(
       true_richness = as.integer(true_richness),
       observed_richness_4 = as.integer(observed_4),
       observed_richness_26 = as.integer(observed_26),
-      invisible_members_26 = as.integer(invisible_26)
+      invisible_members_26 = as.integer(invisible_26),
+      invisible_member_fraction_26 = invisible_fraction
     ),
     distribution_summary = distribution_summary,
     invariants = invariants

@@ -350,6 +350,15 @@ testthat::test_that("FlexiRich prior prediction is reproducible and coherent", {
   testthat::expect_true(all(
     first$draws$observed_richness_26 <= first$draws$true_richness
   ))
+  testthat::expect_equal(
+    first$draws$invisible_member_fraction_26,
+    ifelse(
+      first$draws$true_richness == 0L,
+      0,
+      first$draws$invisible_members_26 / first$draws$true_richness
+    ),
+    tolerance = 0
+  )
   testthat::expect_true(all(first$invariants$passed))
   testthat::expect_lt(
     first$invariants$value[

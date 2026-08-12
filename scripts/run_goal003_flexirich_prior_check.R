@@ -34,7 +34,7 @@ for (path in sort(list.files(
 output_dir <- file.path(
   "outputs",
   "goal003",
-  "flexirich-task3-prior-v3"
+  "flexirich-task3-prior-v4"
 )
 if (file.exists(output_dir) || dir.exists(output_dir)) {
   stop("The frozen prior-check output already exists.", call. = FALSE)
