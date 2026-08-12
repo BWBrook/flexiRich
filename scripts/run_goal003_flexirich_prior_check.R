@@ -34,7 +34,7 @@ for (path in sort(list.files(
 output_dir <- file.path(
   "outputs",
   "goal003",
-  "flexirich-task3-prior-v2"
+  "flexirich-task3-prior-v3"
 )
 if (file.exists(output_dir) || dir.exists(output_dir)) {
   stop("The frozen prior-check output already exists.", call. = FALSE)
@@ -109,10 +109,13 @@ metadata <- tibble::tibble(
   created_utc = format(Sys.time(), tz = "UTC", usetz = TRUE)
 )
 
-readr::write_csv(distribution, file.path(output_dir, "distribution-summary.csv"))
-readr::write_csv(draw_summary, file.path(output_dir, "draw-summary.csv"))
-readr::write_csv(invariants, file.path(output_dir, "invariants.csv"))
-readr::write_csv(metadata, file.path(output_dir, "metadata.csv"))
+write_csv <- function(data, filename) {
+  utils::write.csv(data, filename, row.names = FALSE, na = "")
+}
+write_csv(distribution, file.path(output_dir, "distribution-summary.csv"))
+write_csv(draw_summary, file.path(output_dir, "draw-summary.csv"))
+write_csv(invariants, file.path(output_dir, "invariants.csv"))
+write_csv(metadata, file.path(output_dir, "metadata.csv"))
 status <- if (all(invariants$passed)) "PASS" else "FAIL"
 writeLines(
   c(

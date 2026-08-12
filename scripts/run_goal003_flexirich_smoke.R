@@ -94,7 +94,10 @@ diagnostics <- tibble::tibble(
   min_tail_ess = metrics$min_tail_ess,
   reasons = paste(terminal$diagnostics$reasons, collapse = "; ")
 )
-readr::write_csv(diagnostics, file.path(output_dir, "terminal-diagnostics.csv"))
+write_csv <- function(data, filename) {
+  utils::write.csv(data, filename, row.names = FALSE, na = "")
+}
+write_csv(diagnostics, file.path(output_dir, "terminal-diagnostics.csv"))
 
 if (!identical(fit$terminal_status, "final_nonclean")) {
   future_effort <- tidyr::expand_grid(
@@ -124,23 +127,23 @@ if (!identical(fit$terminal_status, "final_nonclean")) {
         length(candidate_data$candidate_ids)
     )
   )
-  readr::write_csv(
+  write_csv(
     prediction$richness_pmf,
     file.path(output_dir, "richness-pmf.csv")
   )
-  readr::write_csv(
+  write_csv(
     prediction$new_species_count_pmf,
     file.path(output_dir, "new-species-count-pmf.csv")
   )
-  readr::write_csv(
+  write_csv(
     prediction$grid_identity,
     file.path(output_dir, "membership-probabilities.csv")
   )
-  readr::write_csv(
+  write_csv(
     prediction$future_identity,
     file.path(output_dir, "future-detection-probabilities.csv")
   )
-  readr::write_csv(invariants, file.path(output_dir, "invariants.csv"))
+  write_csv(invariants, file.path(output_dir, "invariants.csv"))
   if (!all(invariants$passed)) {
     writeLines(
       c("status=INVARIANT_FAILURE", paste0("git_commit=", git_commit)),
