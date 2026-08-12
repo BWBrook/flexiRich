@@ -1,6 +1,6 @@
 # Goal 003 — Prospective finite-pool richness validation
 
-Status: active — Tasks 1–2 complete; Task 3 ready
+Status: active — Tasks 1–2 complete; Task 3 design approved
 Defined: 2026-08-10
 
 ## Decision question
@@ -158,6 +158,8 @@ Let candidate species be indexed by \(i\), cameras by \(j\), and occasions by
 
 \[
 g_i\sim\operatorname{Bernoulli}(\omega),
+\qquad
+\omega\sim\operatorname{Beta}(1,1),
 \]
 
 and an effort-aware encounter model for members,
@@ -168,11 +170,67 @@ P(y_{ijk}=1\mid g_i=1)
 \]
 
 Species effects \(\alpha_i\) and camera effects \(b_j\) are partially pooled
-under regularising priors chosen by prior-predictive calibration before frozen
-simulation or empirical scoring. The model uses one unimodal species-effect
-distribution. Discrete membership is analytically marginalised in Stan, and
-the returned richness distribution is reconstructed over the exact support
-from observed richness to candidate-pool size.
+using a non-centred parameterisation,
+
+\[
+\alpha_i=\mu_\alpha+\sigma_\alpha z_i,
+\qquad z_i\sim\operatorname{Normal}(0,1),
+\]
+
+and an exact sum-zero camera basis,
+
+\[
+\mathbf b=\sigma_b\mathbf Q\mathbf z_b,
+\qquad \mathbf z_b\sim\operatorname{Normal}(\mathbf 0,\mathbf I).
+\]
+
+The primary regularising priors are frozen as
+
+\[
+\mu_\alpha\sim\operatorname{Normal}\{\log(0.02),1.5\},
+\qquad
+\sigma_\alpha\sim\operatorname{half\text{-}Normal}(0,1),
+\qquad
+\sigma_b\sim\operatorname{half\text{-}Normal}(0,0.75).
+\]
+
+Encounter rates are per active camera-day. These priors are intentionally more
+regularising than the historical Goal002 model and align the central encounter
+rate and species heterogeneity with the conventional occupancy comparator.
+They are frozen from scientific reasoning and prior prediction, not tuned to
+Judbury richness outcomes.
+
+Species detected in the training data are necessarily members. For an all-zero
+candidate, membership is analytically marginalised in Stan: the likelihood is
+a mixture of non-membership and the member likelihood of no detections. There
+are no sampled discrete parameters or continuous pseudo-membership variables.
+For each posterior draw, the model returns the exact conditional membership
+probability for every candidate.
+
+Grid-richness distributions are computed in R as exact Poisson-binomial
+distributions over those conditional probabilities. For each still-unseen
+candidate, future-first-detection probability combines its conditional
+membership probability, posterior encounter process, and a supplied future
+effort schedule. The number of future discoveries is again an exact
+Poisson-binomial distribution. Draw-level distributions are averaged across
+the posterior; Bernoulli membership simulations are not used to approximate
+either result.
+
+Before any candidate fit to Judbury outcomes, prior prediction must examine:
+
+- the implied finite-pool richness distribution;
+- species and camera encounter-rate distributions;
+- one- and seven-day detection probabilities;
+- observed richness under representative four- and 26-occasion designs; and
+- the prevalence of members with effectively negligible detection probability
+  and of numerically extreme hazards.
+
+Three frozen one-factor sensitivities are retained: replace the membership
+prior by \(\operatorname{Beta}(2,2)\); widen the scale of the
+\(\mu_\alpha\) prior from 1.5 to 2; or widen the half-normal scale of
+\(\sigma_\alpha\) from 1 to 1.5. All other priors remain at their primary
+values in each sensitivity. This is a diagnostic envelope, not a route for
+choosing the best-looking prior after observing outcomes.
 
 The candidate deliberately excludes:
 
@@ -187,6 +245,20 @@ The membership-versus-low-encounter ambiguity remains a scientific limitation,
 not a coding defect. Regularisation must be visible through prior-predictive and
 sensitivity results; the model must not manufacture apparent identifiability by
 hiding a strong prior.
+
+### Candidate sampler and terminal-fit contract
+
+The primary sampler uses four chains with 1,000 warmup and 1,000 retained
+iterations per chain. A single rescue is permitted only after a non-clean
+primary attempt: four chains with 1,500 warmup and 1,500 retained iterations,
+`adapt_delta = 0.999`, and maximum tree depth 15.
+
+A terminal fit requires zero divergent transitions, zero maximum-tree-depth
+hits, minimum E-BFMI of at least 0.30, maximum rank-normalised R-hat of at most
+1.01, and minimum bulk and tail effective sample sizes of at least 400. These
+checks cover all population parameters, expected richness, species effects,
+and camera effects. A fit still failing after rescue is explicitly unavailable;
+it produces no richness or prediction summary and triggers no further tuning.
 
 ## Execution sequence and gates
 
@@ -217,12 +289,51 @@ result, not grounds for further sampler tuning.
 
 ### Task 3 — Implement one candidate model
 
-Reuse the verified Goal001/Goal002 effort, likelihood, support, and posterior-
-summary foundations where they remain applicable. Write only the minimal new
-model and adapter surface. One non-centred primary parameterisation and one
-predeclared rescue sampler configuration are allowed. Persistent non-clean
-fits close the candidate; they do not activate a new computational research
-programme.
+Implement the approved model as a new lean Goal003 path rather than reviving
+the historical, much larger FlexiRich-G fitting engine. Reuse only verified
+effort, likelihood, support, Poisson-binomial, and data-grouping foundations
+that remain directly applicable.
+
+The intended module boundary is:
+
+- `stan/goal003_flexirich.stan`: the minimal marginalised likelihood,
+  non-centred effects, exact sum-zero camera effects, and conditional
+  membership quantities;
+- `R/goal003_flexirich.R`: candidate data adaptation, frozen prior and sampler
+  profiles, terminal fit classification, exact richness distributions, and
+  future-discovery predictions; and
+- `R/goal003_sampler.R`: only the CmdStan compilation, sampling-attempt, and
+  diagnostic machinery genuinely shared with the existing occupancy
+  comparator.
+
+Extracting the shared sampler must leave the frozen occupancy model and its
+public behaviour unchanged. No general model framework, compatibility layer,
+or package API is authorised.
+
+Task 3 verification comprises hand-calculated detected and all-zero likelihood
+cases; conditional-membership and extreme-hazard checks; exact sum-zero and
+data-grouping invariants; an independent Stan/R bridge; hand-verifiable
+richness and future-discovery Poisson-binomial cases; prior-predictive checks;
+one small synthetic end-to-end sampling smoke; and regression checks for the
+occupancy comparator.
+
+Task 3 stops when the candidate runs end to end on synthetic inputs, passes the
+mathematical and prior-predictive checks, produces exact richness and discovery
+distributions, and leaves the comparator intact. It does not fit or inspect
+Judbury detection outcomes, compare empirical performance, or add traits,
+site-level states, temporal dynamics, spatial borrowing, or abundance
+interpretation. If prior prediction is materially pathological, pause for a
+scientific decision rather than tuning against real data.
+
+### Heavy-compute operating rule
+
+Unit tests, mathematical bridges, and genuinely small smoke checks may run on
+the local workstation. Stan-intensive simulation grids, calibration batches,
+and empirical fitting run on `deep-server` inside a named `tmux` session from a
+clean, committed analysis state. Each run records its Git commit and frozen
+manifest, writes an inspectable log, and is checked for genuine progress before
+monitoring is handed back to the user. The handoff gives exact WSL and macOS
+status commands. No running frozen analysis is modified in place.
 
 ### Task 4 — Synthetic calibration and misspecification
 
@@ -259,7 +370,8 @@ The candidate clears the synthetic gate only if:
    three species, using only terminal-clean pairs; and
 8. median cost to a terminal-clean fit is no more than three times that of the
    conventional occupancy comparator and no more than five minutes on the
-   reference workstation, with a 95th percentile below 15 minutes.
+   frozen `deep-server` per-fit allocation, with a 95th percentile below 15
+   minutes.
 
 These are screening boundaries, not proof of universal calibration. Failure of
 any item stops empirical FlexiRich fitting unless a demonstrated implementation
@@ -376,6 +488,7 @@ or condensed when that tranche closes.
 
 ## Immediate stopping point
 
-Tasks 1 and 2 are complete. The next tranche is Task 3: specify and implement
-the single minimal FlexiRich candidate without reopening the baseline settings
-or fitting it to prospective Judbury outcomes.
+Tasks 1 and 2 are complete and the Task 3 scientific design is approved. The
+next tranche is a focused TDD implementation plan followed by the single
+minimal FlexiRich candidate, without reopening baseline settings or fitting it
+to prospective Judbury outcomes.

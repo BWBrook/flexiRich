@@ -57,7 +57,10 @@ Goal001 and Goal002 remain the runnable scientific foundation. The active
 tests a simpler, regularised finite-pool detection model against transparent
 richness baselines, synthetic truth, and temporal species-discovery validation.
 Its evaluation-data contract and externally reviewed candidate pool are now
-frozen; no empirical model has yet been fitted. The complete
+frozen, and its transparent comparator suite is complete. The approved Task 3
+design now specifies one regularised finite-pool FlexiRich candidate; no
+candidate model has yet been fitted to empirical Judbury outcomes. The complete
 [Task 1 contract](docs/goals/003-prospective-finite-pool-validation/EvaluationDataContract.md)
-authorises the next tranche: implement and freeze the transparent baselines
-before the FlexiRich candidate is written or fitted.
+and [Goal003 contract](docs/goals/003-prospective-finite-pool-validation/Goal.md)
+authorise the next tranche: write the focused implementation plan and build the
+candidate without reopening the frozen baselines.
