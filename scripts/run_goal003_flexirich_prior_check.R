@@ -34,7 +34,7 @@ for (path in sort(list.files(
 output_dir <- file.path(
   "outputs",
   "goal003",
-  "flexirich-task3-prior-v1"
+  "flexirich-task3-prior-v2"
 )
 if (file.exists(output_dir) || dir.exists(output_dir)) {
   stop("The frozen prior-check output already exists.", call. = FALSE)
@@ -53,24 +53,27 @@ results <- lapply(profile_names, function(profile) {
 })
 names(results) <- profile_names
 
-distribution <- dplyr::bind_rows(lapply(profile_names, function(profile) {
+distribution <- dplyr::bind_rows(lapply(profile_names, function(profile_name) {
+  result <- results[[profile_name]]
   dplyr::mutate(
-    results[[profile]]$distribution_summary,
-    profile = profile,
-    profile_id = results[[profile]]$profile_id,
+    result$distribution_summary,
+    profile = .env$profile_name,
+    profile_id = result$profile_id,
     .before = 1L
   )
 }))
-invariants <- dplyr::bind_rows(lapply(profile_names, function(profile) {
+invariants <- dplyr::bind_rows(lapply(profile_names, function(profile_name) {
+  result <- results[[profile_name]]
   dplyr::mutate(
-    results[[profile]]$invariants,
-    profile = profile,
-    profile_id = results[[profile]]$profile_id,
+    result$invariants,
+    profile = .env$profile_name,
+    profile_id = result$profile_id,
     .before = 1L
   )
 }))
-draw_summary <- dplyr::bind_rows(lapply(profile_names, function(profile) {
-  draws <- results[[profile]]$draws
+draw_summary <- dplyr::bind_rows(lapply(profile_names, function(profile_name) {
+  result <- results[[profile_name]]
+  draws <- result$draws
   fields <- setdiff(names(draws), "draw")
   dplyr::bind_rows(lapply(fields, function(field) {
     values <- draws[[field]]
@@ -81,8 +84,8 @@ draw_summary <- dplyr::bind_rows(lapply(profile_names, function(profile) {
       type = 8
     )
     tibble::tibble(
-      profile = profile,
-      profile_id = results[[profile]]$profile_id,
+      profile = profile_name,
+      profile_id = result$profile_id,
       metric = field,
       mean = mean(values),
       sd = stats::sd(values),
