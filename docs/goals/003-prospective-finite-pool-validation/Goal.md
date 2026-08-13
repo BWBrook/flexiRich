@@ -1,6 +1,6 @@
 # Goal 003 — Prospective finite-pool richness validation
 
-Status: active — Tasks 1–3 complete; Task 4 manifest next
+Status: active — Tasks 1–3 complete; Task 4 screen frozen
 Defined: 2026-08-10
 
 ## Decision question
@@ -400,6 +400,15 @@ These are screening boundaries, not proof of universal calibration. Failure of
 any item stops empirical FlexiRich fitting unless a demonstrated implementation
 defect, rather than model behaviour, caused it.
 
+The bounded screening design was frozen on 2026-08-13 in
+[`Task4Manifest.md`](Task4Manifest.md), before implementing or running the
+batch. It contains five scenarios, two training durations, 30 replicates per
+cell, 300 synthetic datasets, and 840 scheduled Stan fits. Exact tracked
+scenario, dataset, fit, and effort manifests specify common-random-number
+pairing, seeds, misspecification parameters, comparator eligibility, scoring
+denominators, gates, and output provenance. No Judbury detections or future
+species records were inspected.
+
 ### Task 5 — Judbury temporal validation
 
 Fit only methods that cleared their preceding gates. Use rolling-origin or
@@ -511,8 +520,9 @@ or condensed when that tranche closes.
 
 ## Immediate stopping point
 
-Tasks 1–3 are complete. The next tranche is Task 4: freeze the bounded synthetic
-calibration and misspecification manifest, including cell definitions, seed
-rules, scoring outputs, screening size, and terminal-fit accounting, before
-launching any simulation batch. Baseline settings and the Task 3 candidate
-remain frozen, and prospective Judbury outcomes remain unopened.
+Tasks 1–3 are complete and the Task 4 screen is frozen. The next tranche is a
+focused implementation plan for the declared misspecification generator,
+scoring/output oracles, resumable non-overwriting batch runner, and bounded
+parallel execution. It must pass local hand cases before the exact committed
+screen is launched on `deep-server`. Baseline settings and the Task 3 candidate
+remain frozen, and future Judbury detections remain unopened.

@@ -78,5 +78,7 @@ candidate implementation, not calibration or predictive superiority; no
 candidate model has yet been fitted to empirical Judbury outcomes. The complete
 [Task 1 contract](docs/goals/003-prospective-finite-pool-validation/EvaluationDataContract.md)
 and [Goal003 contract](docs/goals/003-prospective-finite-pool-validation/Goal.md)
-authorise the next tranche: freeze the Task 4 synthetic calibration and
-misspecification manifest before launching any calibration batch.
+now include the frozen
+[Task 4 screening manifest](docs/goals/003-prospective-finite-pool-validation/Task4Manifest.md).
+The next tranche implements its synthetic generators, scoring/output oracles,
+and non-overwriting batch runner before any calibration batch is launched.

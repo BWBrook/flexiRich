@@ -1,0 +1,6 @@
+"scenario_id","scenario_order","scenario_class","misspecification","true_richness","mean_log_rate","sd_log_rate","sd_camera","cryptic_fraction","cryptic_mean_log_rate","cryptic_sd_log_rate","season_cycle_occasions","season_active_occasions","season_active_multiplier","season_inactive_multiplier"
+"matched_low",1,"matched","none",10,-6.21460809842219,1,0.35,,,,,,,
+"matched_mid",2,"matched","none",25,-6.21460809842219,1,0.35,,,,,,,
+"matched_high",3,"matched","none",40,-6.21460809842219,1,0.35,,,,,,,
+"guild_lower_tail",4,"misspecified","guild_lower_tail",25,-5.80914299031403,0.6,0.35,0.2,-8.80487526386802,0.6,,,,
+"seasonal_availability",5,"misspecified","seasonal_availability",25,-6.21460809842219,1,0.35,,,,52,13,3.4,0.2
