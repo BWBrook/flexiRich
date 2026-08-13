@@ -1,6 +1,6 @@
 # Goal 003 — Prospective finite-pool richness validation
 
-Status: active — Tasks 1–3 complete; Task 4 screen frozen
+Status: active — Tasks 1–3 complete; Task 4 screen run-ready
 Defined: 2026-08-10
 
 ## Decision question
@@ -409,6 +409,12 @@ pairing, seeds, misspecification parameters, comparator eligibility, scoring
 denominators, gates, and output provenance. No Judbury detections or future
 species records were inspected.
 
+The deterministic generators, scoring and output oracles, interruption-safe
+row publication, fixed gate evaluator, and bounded parallel runner were then
+implemented against that unchanged manifest. Ten local scenario-duration hand
+cases pass without Stan fitting or empirical outcomes. The heavy screen itself
+has not yet been launched.
+
 ### Task 5 — Judbury temporal validation
 
 Fit only methods that cleared their preceding gates. Use rolling-origin or
@@ -520,9 +526,8 @@ or condensed when that tranche closes.
 
 ## Immediate stopping point
 
-Tasks 1–3 are complete and the Task 4 screen is frozen. The next tranche is a
-focused implementation plan for the declared misspecification generator,
-scoring/output oracles, resumable non-overwriting batch runner, and bounded
-parallel execution. It must pass local hand cases before the exact committed
-screen is launched on `deep-server`. Baseline settings and the Task 3 candidate
-remain frozen, and future Judbury detections remain unopened.
+Tasks 1–3 are complete and the frozen Task 4 screen is run-ready. The next
+tranche is the exact committed `deep-server` launch, followed by monitoring
+handoff rather than continuous polling. Baseline settings, simulation rows,
+seeds, scoring gates, and the Task 3 candidate remain frozen, and future
+Judbury detections remain unopened.

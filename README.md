@@ -80,5 +80,8 @@ candidate model has yet been fitted to empirical Judbury outcomes. The complete
 and [Goal003 contract](docs/goals/003-prospective-finite-pool-validation/Goal.md)
 now include the frozen
 [Task 4 screening manifest](docs/goals/003-prospective-finite-pool-validation/Task4Manifest.md).
-The next tranche implements its synthetic generators, scoring/output oracles,
-and non-overwriting batch runner before any calibration batch is launched.
+Its deterministic generators, scoring/output oracles, and interruption-safe
+non-overwriting batch runner are now implemented and locally verified without
+Stan fitting or empirical outcomes. The next tranche freezes that exact commit
+on `deep-server`, starts the 840-fit screen in a named `tmux` session, verifies
+genuine progress, and hands monitoring back to the user.

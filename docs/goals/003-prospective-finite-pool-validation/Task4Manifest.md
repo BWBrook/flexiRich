@@ -266,7 +266,23 @@ a failure does not permit searching for a more favourable grid.
 
 ## Immediate stopping point
 
-This tranche freezes what will be simulated and fitted. It does not implement
-the misspecification generator, batch runner, scoring orchestration, or launch
-the screen. The next tranche is a focused implementation plan for those pieces,
-followed by local oracle tests and a committed `deep-server` launch.
+The execution layer is now implemented without launching the screen. It
+contains deterministic matched, cryptic-guild, and seasonal generators;
+truth-separated canonical model inputs; all frozen deterministic baselines;
+exact richness, discovery-count, and identity scoring; fixed-denominator gate
+evaluation; and a bounded eight-worker runner.
+
+Each dataset and fit is written through a staging directory and published only
+after `completion-status.txt` exists. Published rows are never overwritten.
+Interrupted staging is preserved and stops a resume for diagnosis rather than
+silently repeating or replacing the row. Final aggregation checks all 300
+dataset IDs, all 840 fit IDs, all baseline rows, and all score rows before the
+screening gates are evaluated. Scheduled and scored denominators, package and
+source versions, sampler diagnostics, compact fit summaries, and per-fit
+CmdStan CSVs are retained.
+
+Ten local scenario-by-duration hand cases, the truth-isolation checks, scoring
+oracles, gate hand cases, interruption semantics, and aggregate row oracle pass
+without executing Stan fits or reading empirical outcomes. The next step is to
+commit this exact runner, push it, and launch
+`scripts/run_goal003_task4_screen.R` in a named `deep-server` tmux session.
