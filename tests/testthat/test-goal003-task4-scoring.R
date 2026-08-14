@@ -260,3 +260,34 @@ testthat::test_that("Task 4 gate evaluator applies all frozen thresholds", {
       "misspecified_coverage-seasonal_availability-04w"
   ])
 })
+
+testthat::test_that(
+  "catastrophic gate covers every terminal-clean primary FlexiRich fit",
+  {
+    input <- .goal003_task4_passing_gate_inputs()
+    affected_id <- input$manifest$datasets$dataset_id[
+      input$manifest$datasets$scenario_id == "guild_lower_tail" &
+        input$manifest$datasets$train_occasions == 4L &
+        input$manifest$datasets$replicate == 1L
+    ]
+    affected <- input$richness_scores$method == "flexirich" &
+      input$richness_scores$run_role == "primary" &
+      input$richness_scores$dataset_id == affected_id
+    input$richness_scores$point_estimate[affected] <-
+      input$richness_scores$true_richness[affected] + 13
+    input$richness_scores$absolute_error[affected] <- 13
+
+    result <- evaluate_goal003_task4_gates(
+      input$manifest,
+      input$fit_status,
+      input$richness_scores
+    )
+    gate <- result$gates |>
+      dplyr::filter(gate_id == "catastrophic_overestimate")
+
+    testthat::expect_equal(gate$numerator, 1)
+    testthat::expect_equal(gate$denominator, 300)
+    testthat::expect_equal(gate$value, 1 / 300)
+    testthat::expect_true(gate$passed)
+  }
+)

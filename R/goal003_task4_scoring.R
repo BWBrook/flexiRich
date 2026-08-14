@@ -692,7 +692,7 @@ evaluate_goal003_task4_gates <- function(
     )
   }
 
-  catastrophic <- flex$point_estimate - flex$true_richness >= 12.5
+  catastrophic <- flex_all$point_estimate - flex_all$true_richness >= 12.5
   add_gate(
     "catastrophic_overestimate", "catastrophic_fraction",
     mean(catastrophic), 0.01, "<", sum(catastrophic), length(catastrophic),
