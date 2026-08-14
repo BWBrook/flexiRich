@@ -1,6 +1,6 @@
 # Goal 004 proposal — pool-stable membership and short-window identifiability
 
-Status: proposed — no implementation or empirical access authorised  
+Status: active — Task 1 analytical screen authorised; no empirical access
 Proposed: 2026-08-14
 
 ## Decision question
