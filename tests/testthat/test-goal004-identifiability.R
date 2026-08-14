@@ -159,13 +159,14 @@ testthat::test_that("decision checkpoint distinguishes all three outcomes", {
     )
   passing <- dplyr::bind_rows(core, broad)
 
-  shifted <- goal004_task1_add_pool_shifts(
+  add_shifts <- function(value) goal004_task1_add_pool_shifts(
     dplyr::mutate(
-      passing,
+      value,
       effort_replicate = 1L,
       effort_block_start = 10L
     )
   )
+  shifted <- add_shifts(passing)
   testthat::expect_equal(nrow(shifted), nrow(passing))
   testthat::expect_equal(
     shifted$total_shift_vs_primary50[shifted$model == "exchangeable"],
@@ -173,17 +174,21 @@ testthat::test_that("decision checkpoint distinguishes all three outcomes", {
   )
 
   testthat::expect_identical(
-    goal004_task1_decision(passing)$status,
+    goal004_task1_decision(shifted)$status,
     "PROCEED"
   )
   broad$fringe_mean_reduction <- 0.1
   testthat::expect_identical(
-    goal004_task1_decision(dplyr::bind_rows(core, broad))$status,
+    goal004_task1_decision(add_shifts(
+      dplyr::bind_rows(core, broad)
+    ))$status,
     "CORE_ONLY"
   )
   core$posterior_membership_mean <- c(20, 25, 30)
   testthat::expect_identical(
-    goal004_task1_decision(dplyr::bind_rows(core, broad))$status,
+    goal004_task1_decision(add_shifts(
+      dplyr::bind_rows(core, broad)
+    ))$status,
     "STOP"
   )
 })

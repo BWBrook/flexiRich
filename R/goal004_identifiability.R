@@ -698,7 +698,8 @@ goal004_task1_decision <- function(summary) {
     "model", "candidate_count", "fringe_prior_scale",
     "fringe_rate_multiplier", "truth_membership", "rate_prior_id",
     "train_occasions", "effort_label", "posterior_membership_mean",
-    "posterior_total_mean", "crps_improvement", "fringe_mean_reduction"
+    "posterior_total_mean", "crps_improvement", "fringe_mean_reduction",
+    "core_shift_vs_primary50", "total_shift_vs_primary50"
   )
   if (!inherits(summary, "data.frame") ||
       !all(required %in% names(summary))) {
@@ -727,24 +728,12 @@ goal004_task1_decision <- function(summary) {
       fringe_prior_scale == 5,
       fringe_rate_multiplier == 0.1
     ) |>
-    dplyr::left_join(
-      core |>
-        dplyr::select(
-          truth_membership,
-          core_reference_mean = posterior_membership_mean
-        ),
-      by = "truth_membership"
-    ) |>
-    dplyr::mutate(
-      core_shift = posterior_membership_mean - core_reference_mean,
-      total_shift = posterior_total_mean - core_reference_mean
-    ) |>
     dplyr::arrange(truth_membership)
   if (!identical(broad$truth_membership, c(10, 25, 40))) {
     .goal004_stop("The three broad-pool checkpoint rows are missing.")
   }
-  maximum_core_shift <- max(abs(broad$core_shift))
-  maximum_total_shift <- max(abs(broad$total_shift))
+  maximum_core_shift <- max(abs(broad$core_shift_vs_primary50))
+  maximum_total_shift <- max(abs(broad$total_shift_vs_primary50))
   minimum_fringe_reduction <- min(broad$fringe_mean_reduction)
 
   metrics <- tibble::tibble(
