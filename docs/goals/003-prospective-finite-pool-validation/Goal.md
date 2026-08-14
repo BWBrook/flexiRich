@@ -1,7 +1,8 @@
 # Goal 003 — Prospective finite-pool richness validation
 
-Status: active — Tasks 1–3 complete; Task 4 screen run-ready
+Status: complete — minimal candidate stopped at the Task 4 synthetic screen
 Defined: 2026-08-10
+Closed: 2026-08-14
 
 ## Decision question
 
@@ -411,11 +412,23 @@ species records were inspected.
 
 The deterministic generators, scoring and output oracles, interruption-safe
 row publication, fixed gate evaluator, and bounded parallel runner were then
-implemented against that unchanged manifest. Ten local scenario-duration hand
-cases pass without Stan fitting or empirical outcomes. The heavy screen itself
-has not yet been launched.
+implemented against that unchanged manifest. The 300 datasets and 840 Stan
+fits completed on `deep-server` at commit
+`0cf94097513629c72e14f99b94e2222818112ef3`, without empirical outcomes.
+
+A post-run audit found that the catastrophic-overestimate gate had mistakenly
+used only the 179 matched terminal-clean fits rather than all 299
+terminal-clean primary fits. Commit
+`d06e41fa192c7c09848945b6acb7f5186a260949` repaired the denominator and
+replayed only the gate calculation against hash-locked result tables; no Stan
+fit was rerun or replaced. The corrected value is 2/299 and passes, but five
+other frozen gates still fail. The final decision therefore remains
+`SCREEN_STOP`. See [`Decision.md`](Decision.md).
 
 ### Task 5 — Judbury temporal validation
+
+**Outcome: not run.** The corrected Task 4 decision is `SCREEN_STOP`, so the
+minimal candidate did not earn access to empirical Judbury outcomes.
 
 Fit only methods that cleared their preceding gates. Use rolling-origin or
 blocked temporal validation with all cutoffs and horizons fixed in Task 1.
@@ -451,6 +464,10 @@ If effective replication is too small to support that inference, the empirical
 result is inconclusive rather than positive.
 
 ### Task 6 — Private external validation
+
+**Outcome: not run.** Huon Ridge remains reserved as private external
+validation for a future candidate that first clears synthetic and Judbury
+gates.
 
 Huon Ridge is used only after the synthetic and Judbury gates pass. Model and
 comparator settings are frozen before access. Camera identifiers may be
@@ -526,8 +543,8 @@ or condensed when that tranche closes.
 
 ## Immediate stopping point
 
-Tasks 1–3 are complete and the frozen Task 4 screen is run-ready. The next
-tranche is the exact committed `deep-server` launch, followed by monitoring
-handoff rather than continuous polling. Baseline settings, simulation rows,
-seeds, scoring gates, and the Task 3 candidate remain frozen, and future
-Judbury detections remain unopened.
+Goal003 is closed at `SCREEN_STOP`. The original screen and its separately
+published denominator correction are retained without overwriting. Tasks 5 and
+6 are not authorised for this candidate, and future Judbury detections remain
+unopened. Any successor is a new model-development goal with new held-out
+synthetic validation, not a post-hoc retuning of this screen.

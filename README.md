@@ -66,22 +66,19 @@ path has been retired rather than retained as dormant code. The concise
 [closure record](docs/goals/002r-collapsed-unseen-richness/Goal.md) preserves
 the decision and the ingredients carried forward.
 
-Goal001 and Goal002 remain the runnable scientific foundation. The active
-[Goal003 contract](docs/goals/003-prospective-finite-pool-validation/Goal.md)
-tests a simpler, regularised finite-pool detection model against transparent
-richness baselines, synthetic truth, and temporal species-discovery validation.
-Its evaluation-data contract and externally reviewed candidate pool are now
-frozen, its transparent comparator suite is complete, and its single
-regularised finite-pool candidate has passed prior-predictive, mathematical,
-and synthetic end-to-end execution checks. This establishes a trustworthy
-candidate implementation, not calibration or predictive superiority; no
-candidate model has yet been fitted to empirical Judbury outcomes. The complete
-[Task 1 contract](docs/goals/003-prospective-finite-pool-validation/EvaluationDataContract.md)
-and [Goal003 contract](docs/goals/003-prospective-finite-pool-validation/Goal.md)
-now include the frozen
-[Task 4 screening manifest](docs/goals/003-prospective-finite-pool-validation/Task4Manifest.md).
-Its deterministic generators, scoring/output oracles, and interruption-safe
-non-overwriting batch runner are now implemented and locally verified without
-Stan fitting or empirical outcomes. The next tranche freezes that exact commit
-on `deep-server`, starts the 840-fit screen in a named `tmux` session, verifies
-genuine progress, and hands monitoring back to the user.
+Goal001 and Goal002 remain the runnable scientific foundation. Goal003 tested a
+simpler, regularised finite-pool detection model against transparent richness
+baselines and synthetic truth. Its 300-dataset, 840-fit frozen screen completed
+successfully, but the candidate failed prespecified short-window calibration
+and prior/pool-sensitivity gates. The current model is therefore stopped before
+empirical Judbury fitting. The
+[Goal003 decision](docs/goals/003-prospective-finite-pool-validation/Decision.md)
+records both the original screen and a denominator-only correction that left
+the `SCREEN_STOP` decision unchanged.
+
+The proposed
+[Goal004 direction](docs/goals/004-pool-stable-membership/Goal.md) asks whether
+externally defined candidate strata and a count-scale membership prior can
+reduce four-week pool dependence while making the contribution of prior
+knowledge explicit. It is a new candidate-development problem, not a retuning
+of Goal003, and Judbury outcomes remain unopened.
