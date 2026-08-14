@@ -23,6 +23,7 @@
   stan_file,
   cache_id,
   executable_stem,
+  output_namespace = "goal003",
   force_recompile = FALSE
 ) {
   valid_text <- function(x) {
@@ -30,9 +31,14 @@
   }
   if (!valid_text(stan_file) ||
       !valid_text(cache_id) ||
-      !valid_text(executable_stem)) {
+      !valid_text(executable_stem) ||
+      !valid_text(output_namespace) ||
+      !grepl("^[a-z0-9][a-z0-9-]*$", output_namespace)) {
     .goal003_sampler_stop(
-      "Stan file, cache ID, and executable stem must be non-empty strings."
+      paste0(
+        "Stan file, cache ID, executable stem, and output namespace ",
+        "must be valid strings."
+      )
     )
   }
   if (!is.logical(force_recompile) ||
@@ -57,7 +63,13 @@
     serialize = FALSE
   )
   hash_prefix <- substr(source_hash, 1L, 16L)
-  cache <- file.path(root, "outputs", "goal003", cache_id, "cmdstan")
+  cache <- file.path(
+    root,
+    "outputs",
+    output_namespace,
+    cache_id,
+    "cmdstan"
+  )
   source_dir <- file.path(cache, "source", hash_prefix)
   bin_dir <- file.path(cache, "bin")
   dir.create(source_dir, recursive = TRUE, showWarnings = FALSE)
@@ -307,16 +319,25 @@ classify_goal003_diagnostics <- function(
   "final_nonclean"
 }
 
-.goal003_prepare_output_directory <- function(output_dir) {
+.goal003_prepare_output_directory <- function(
+  output_dir,
+  output_namespace = "goal003"
+) {
   if (!is.character(output_dir) ||
       length(output_dir) != 1L ||
       is.na(output_dir) ||
       !nzchar(output_dir)) {
     .goal003_sampler_stop("output_dir must be one non-empty path.")
   }
+  if (!is.character(output_namespace) ||
+      length(output_namespace) != 1L ||
+      is.na(output_namespace) ||
+      !grepl("^[a-z0-9][a-z0-9-]*$", output_namespace)) {
+    .goal003_sampler_stop("output_namespace must be one safe directory name.")
+  }
   root <- .goal003_project_root()
   boundary <- normalizePath(
-    file.path(root, "outputs", "goal003"),
+    file.path(root, "outputs", output_namespace),
     mustWork = FALSE
   )
   absolute_output <- normalizePath(
@@ -325,14 +346,18 @@ classify_goal003_diagnostics <- function(
   )
   if (!startsWith(absolute_output, paste0(boundary, .Platform$file.sep))) {
     .goal003_sampler_stop(
-      "output_dir must be a new directory beneath outputs/goal003."
+      paste0(
+        "output_dir must be a new directory beneath outputs/",
+        output_namespace,
+        "."
+      )
     )
   }
   if (file.exists(absolute_output) || dir.exists(absolute_output)) {
     .goal003_sampler_stop("output_dir must not already exist.")
   }
   if (!dir.create(absolute_output, recursive = TRUE, showWarnings = FALSE)) {
-    .goal003_sampler_stop("Could not create the Goal003 output directory.")
+    .goal003_sampler_stop("Could not create the model output directory.")
   }
   normalizePath(absolute_output, mustWork = TRUE)
 }
