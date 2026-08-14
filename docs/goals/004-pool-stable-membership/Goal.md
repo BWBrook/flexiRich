@@ -1,6 +1,6 @@
 # Goal 004 proposal — pool-stable membership and short-window identifiability
 
-Status: paused after Task 1 — `CORE_ONLY`; no empirical access
+Status: active — Task 2 core-pool prior elicitation; no empirical access
 Proposed: 2026-08-14
 
 ## Decision question
