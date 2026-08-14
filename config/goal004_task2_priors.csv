@@ -1,0 +1,7 @@
+profile_id,profile_order,role,omega_alpha,omega_beta,routine_median_rate,occasional_median_rate,log_rate_sd,class_blur_probability,camera_sd_scale
+primary,1,primary,1,1,0.002,0.0005,1,0,0.75
+rate_lower,2,sensitivity,1,1,0.001,0.00025,1,0,0.75
+rate_higher,3,sensitivity,1,1,0.004,0.001,1,0,0.75
+spread_wider,4,sensitivity,1,1,0.002,0.0005,1.25,0,0.75
+class_blur,5,sensitivity,1,1,0.002,0.0005,1,0.1,0.75
+membership_regularised,6,sensitivity,2,2,0.002,0.0005,1,0,0.75

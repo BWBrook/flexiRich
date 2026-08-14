@@ -1,6 +1,6 @@
 # Goal004 Task 2 — core-pool strata and prior elicitation
 
-Status: candidate mapping fixed; numerical encounter priors awaiting review
+Status: approved and frozen for prior-only calibration
 Prepared: 2026-08-14
 
 ## Estimand decision
@@ -122,8 +122,8 @@ probabilities among species ([Bischof et al. 2014](https://doi.org/10.1111/2041-
 ## Proposed calibration anchors
 
 The following values turn the successful Task 1 feasibility profile into an
-ecologically interpretable proposal. They are not frozen until collaborator
-review.
+ecologically interpretable prior. The collaborator approved these anchors on
+2026-08-14, before any Judbury detections were accessed.
 
 | Class | Median rate/day | Log SD | Median \(q_{224}\) | 90% interval for \(q_{224}\) |
 | --- | ---: | ---: | ---: | ---: |
@@ -157,6 +157,19 @@ large factorial search:
 misclassification. The broader 106-candidate analysis remains a separate
 pool-boundary sensitivity and is not eligible to redefine primary richness.
 
+For that diagnostic only, the 56 fringe candidates retain the Task 1
+count-scale prior
+
+\[
+R_f\sim\operatorname{TruncatedExponential}(5;0,56),
+\qquad \psi_f=R_f/56.
+\]
+
+The three fringe candidates classified `routine` use the routine encounter
+prior. The 53 classified `rare` use median rate 0.0002 per active camera-day
+and log SD 1. This deliberately prior-dominated fringe is reported separately
+from the core and total, never as the primary estimate.
+
 ## Prior-only output contract
 
 Once the calibration is approved, Task 2 will generate without detections:
@@ -174,14 +187,17 @@ These become mandatory comparators in later synthetic and empirical work. A
 posterior must improve proper scores over its own matching prior-only forecast;
 comparison with observed richness alone is insufficient.
 
-## Approval gate
+## Approval record
 
-Before numerical priors or prior-only predictions are frozen, collaborator
-review is required on two load-bearing choices:
+The collaborator approved both load-bearing choices on 2026-08-14:
 
 1. fixed externally calibrated class distributions, rather than relearning
    their hyperparameters from the same sparse camera window; and
 2. whether the proposed routine and occasional \(q_{224}\) distributions match
    the intended ecological meanings of those worksheet labels.
 
-No Stan model or empirical outcome is accessed at this gate.
+The numerical profiles are frozen in `config/goal004_task2_priors.csv`. Task 2
+uses 50,000 common-random-number draws with seed 40042. The beta-binomial core
+richness PMF is exact; effort-dependent observed-richness and discovery
+distributions are Monte Carlo predictions with reported Monte Carlo error.
+No Stan model or empirical outcome is accessed in this task.

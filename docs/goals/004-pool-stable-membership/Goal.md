@@ -1,6 +1,6 @@
 # Goal 004 proposal — pool-stable membership and short-window identifiability
 
-Status: active — Task 2 core-pool prior elicitation; no empirical access
+Status: active — Task 2 prior-only calibration frozen; no empirical access
 Proposed: 2026-08-14
 
 ## Decision question
