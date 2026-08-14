@@ -139,7 +139,7 @@ if (!identical(
 output_dir <- file.path(
   "outputs",
   "goal004",
-  "task3-prior-concordance-v1"
+  "task3-prior-concordance-v2"
 )
 fit_result <- fit_goal004_flexirich(
   data,
@@ -199,14 +199,20 @@ if (fit_result$terminal_status == "final_nonclean") {
 
 prediction <- predict_goal004_flexirich(fit_result, future_effort)
 fit <- .goal004_terminal_flexirich_fit(fit_result)
-richness_summary <- fit$summary(variables = "expected_richness")
-if (nrow(richness_summary) != 1L ||
-    anyNA(richness_summary[c("mean", "mcse_mean")])) {
+richness_summary <- posterior::summarise_draws(
+  fit$draws(variables = "expected_richness"),
+  "mean",
+  "mcse_mean"
+)
+richness_mean <- richness_summary$mean
+richness_mcse <- richness_summary$mcse_mean
+if (!is.finite(richness_mean) || !is.finite(richness_mcse) ||
+    richness_mcse <= 0) {
   stop("Expected-richness Monte Carlo diagnostics are missing.", call. = FALSE)
 }
 exact_mean <- 25
-mean_error <- abs(richness_summary$mean - exact_mean)
-mean_limit <- 4 * richness_summary$mcse_mean
+mean_error <- abs(richness_mean - exact_mean)
+mean_limit <- 4 * richness_mcse
 
 prior_reference <- goal004_beta_binomial_pmf(50L, 1, 1)
 prior_tv <- goal004_total_variation(
@@ -266,8 +272,8 @@ metadata <- tibble::tibble(
   grouped_likelihood_rows = data$stan_data$G,
   prospective_active_camera_days = sum(future_effort$active_days),
   exact_richness_mean = exact_mean,
-  posterior_richness_mean = richness_summary$mean,
-  posterior_richness_mcse = richness_summary$mcse_mean,
+  posterior_richness_mean = richness_mean,
+  posterior_richness_mcse = richness_mcse,
   task2_reference_commit = sub("git_commit=", "", completion[
     grepl("^git_commit=", completion)
   ]),
