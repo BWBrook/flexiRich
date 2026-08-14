@@ -1,6 +1,6 @@
 # Goal004 Task 3 — minimal fixed-class model design
 
-Status: proposed for collaborator approval; no implementation or Stan run
+Status: implemented; all Task 3 gates passed
 Prepared: 2026-08-14
 
 ## Decision to be tested

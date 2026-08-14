@@ -1,6 +1,6 @@
 # Goal 004 proposal — pool-stable membership and short-window identifiability
 
-Status: active — Task 3 minimal-model design awaiting approval
+Status: active — Task 3 passed; Task 4 development-simulation design is next
 Proposed: 2026-08-14
 
 ## Decision question

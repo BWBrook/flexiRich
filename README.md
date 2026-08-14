@@ -81,6 +81,8 @@ The active
 externally defined candidate strata and a count-scale membership prior can
 reduce four-week pool dependence while making the contribution of prior
 knowledge explicit. Its analytical screen and prior-only calibration are
-complete; the minimal fixed-class model is now at its design gate. This is a
-new candidate-development problem, not a retuning of Goal003, and Judbury
-outcomes remain unopened.
+complete, and the minimal fixed-class core model has passed its Stan/R bridge,
+prior-concordance, and synthetic-smoke gates. Development calibration and a
+genuine core-plus-fringe stability test remain for Task 4. This is a new
+candidate-development problem, not a retuning of Goal003, and Judbury outcomes
+remain unopened.
