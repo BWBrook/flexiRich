@@ -1,6 +1,6 @@
 # Goal 004 proposal — pool-stable membership and short-window identifiability
 
-Status: active — Task 2 complete; Task 3 minimal model is next
+Status: active — Task 3 minimal-model design awaiting approval
 Proposed: 2026-08-14
 
 ## Decision question
@@ -50,8 +50,11 @@ g_i \sim \operatorname{Bernoulli}(\psi_h),
 The prior is elicited on (R_h), the expected number of members in the
 stratum, rather than on a common pool fraction. Adding a separate fringe
 stratum therefore does not rescale the core richness prior. The exact prior
-family and bounds are not yet fixed; Task 1 must show that they can be elicited
-from external evidence without encoding synthetic truth.
+is now frozen in `config/goal004_task2_priors.csv`: Task 1 found that the core
+could remain data-responsive but the fringe was prior-dominated, and Task 2
+fixed the core membership and encounter-class profiles without using Judbury
+outcomes. Task 3 therefore begins with the core only; a later nested-pool
+diagnostic must give the fringe its own independent count parameter.
 
 Encounter rates retain the effort-aware hazard
 
@@ -110,7 +113,11 @@ separately documented elicitation completed without Judbury outcomes. Freeze:
 Implement the smallest analytically marginalised model that passes Task 1.
 Retain the Goal003 effort likelihood, exact richness/discovery PMFs, sampler
 contract, transparent comparators, and truth-isolation checks. Do not revive
-the failed Goal002R numerical machinery.
+the failed Goal002R numerical machinery. For a fixed candidate count, the
+expected-count membership parameter is algebraically equivalent to the
+Goal003 membership fraction; the fixed external encounter classes, not that
+reparameterisation, are the only proposed source of improved short-window
+identifiability.
 
 ### Task 4 — development simulation
 
@@ -118,6 +125,9 @@ Use the completed Goal003 screen only as development evidence. Add class-aware
 generators in which external strata are informative, weakly informative, and
 partly wrong. Evaluate four- and 26-week inference, nested-pool stability,
 prior-to-posterior information gain, and future discovery prediction.
+Nested-pool stability must be tested by adding the fringe as an independent
+membership stratum and checking whether the fitted core posterior changes,
+including through any camera effects shared by the strata.
 
 ### Task 5 — newly frozen held-out screen
 

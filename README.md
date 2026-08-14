@@ -76,9 +76,11 @@ empirical Judbury fitting. The
 records both the original screen and a denominator-only correction that left
 the `SCREEN_STOP` decision unchanged.
 
-The proposed
+The active
 [Goal004 direction](docs/goals/004-pool-stable-membership/Goal.md) asks whether
 externally defined candidate strata and a count-scale membership prior can
 reduce four-week pool dependence while making the contribution of prior
-knowledge explicit. It is a new candidate-development problem, not a retuning
-of Goal003, and Judbury outcomes remain unopened.
+knowledge explicit. Its analytical screen and prior-only calibration are
+complete; the minimal fixed-class model is now at its design gate. This is a
+new candidate-development problem, not a retuning of Goal003, and Judbury
+outcomes remain unopened.
