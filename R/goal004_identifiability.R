@@ -637,6 +637,61 @@ goal004_task1_effort_windows <- function(manifest) {
   list(audit = audit, representatives = representatives)
 }
 
+#' Attach primary-pool reference means and pool shifts
+goal004_task1_add_pool_shifts <- function(
+  summary,
+  core_candidate_count = 50L
+) {
+  keys <- c(
+    "train_occasions",
+    "effort_label",
+    "effort_replicate",
+    "effort_block_start",
+    "truth_membership",
+    "rate_prior_id"
+  )
+  required <- c(
+    keys,
+    "model",
+    "candidate_count",
+    "posterior_membership_mean",
+    "posterior_total_mean"
+  )
+  if (!inherits(summary, "data.frame") ||
+      !all(required %in% names(summary))) {
+    .goal004_stop("summary does not contain the pool-shift fields.")
+  }
+  reference <- summary |>
+    dplyr::filter(
+      model == "exchangeable",
+      candidate_count == .env$core_candidate_count
+    ) |>
+    dplyr::select(
+      dplyr::all_of(keys),
+      core_reference_mean = posterior_membership_mean
+    )
+  if (nrow(reference) == 0L || anyDuplicated(reference[keys])) {
+    .goal004_stop("Primary-pool reference rows are missing or duplicated.")
+  }
+  joined <- summary |>
+    dplyr::left_join(reference, by = keys)
+  if (nrow(joined) != nrow(summary) || anyNA(joined$core_reference_mean)) {
+    .goal004_stop("Primary-pool reference matching was not one-to-one.")
+  }
+  joined |>
+    dplyr::mutate(
+      core_shift_vs_primary50 = dplyr::case_when(
+        model == "exchangeable" &
+          candidate_count == .env$core_candidate_count ~ 0,
+        model == "core_fringe" ~
+          posterior_membership_mean - core_reference_mean,
+        TRUE ~ NA_real_
+      ),
+      total_shift_vs_primary50 =
+        posterior_total_mean - core_reference_mean
+    )
+}
+
 #' Apply the prespecified Goal004 Task 1 decision checkpoint
 goal004_task1_decision <- function(summary) {
   required <- c(

@@ -160,39 +160,10 @@ summary_table <- dplyr::bind_rows(summary_rows) |>
     dplyr::desc(fringe_rate_multiplier)
   )
 
-reference <- summary_table |>
-  dplyr::filter(model == "exchangeable", candidate_count == core_count) |>
-  dplyr::select(
-    train_occasions,
-    effort_label,
-    effort_replicate,
-    effort_block_start,
-    truth_membership,
-    rate_prior_id,
-    core_reference_mean = posterior_membership_mean
-  )
-summary_table <- summary_table |>
-  dplyr::left_join(
-    reference,
-    by = c(
-      "train_occasions",
-      "effort_label",
-      "effort_replicate",
-      "effort_block_start",
-      "truth_membership",
-      "rate_prior_id"
-    )
-  ) |>
-  dplyr::mutate(
-    core_shift_vs_primary50 = dplyr::case_when(
-      model == "exchangeable" & candidate_count == core_count ~ 0,
-      model == "core_fringe" ~
-        posterior_membership_mean - core_reference_mean,
-      TRUE ~ NA_real_
-    ),
-    total_shift_vs_primary50 =
-      posterior_total_mean - core_reference_mean
-  )
+summary_table <- goal004_task1_add_pool_shifts(
+  summary_table,
+  core_candidate_count = core_count
+)
 
 decision <- goal004_task1_decision(summary_table)
 if (nrow(summary_table) != 432L ||
@@ -202,7 +173,10 @@ if (nrow(summary_table) != 432L ||
 }
 
 core_sensitivity <- summary_table |>
-  dplyr::filter(model == "exchangeable", candidate_count == core_count) |>
+  dplyr::filter(
+    model == "exchangeable",
+    candidate_count == .env$core_count
+  ) |>
   dplyr::group_by(train_occasions, effort_label, rate_prior_id) |>
   dplyr::summarise(
     high_low_mean_separation =
@@ -217,7 +191,7 @@ core_sensitivity <- summary_table |>
 exchangeable_pool_sensitivity <- summary_table |>
   dplyr::filter(
     model == "exchangeable",
-    candidate_count == broader_count
+    candidate_count == .env$broader_count
   ) |>
   dplyr::group_by(train_occasions, effort_label, rate_prior_id) |>
   dplyr::summarise(
