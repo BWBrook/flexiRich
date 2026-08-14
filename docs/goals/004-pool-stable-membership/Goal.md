@@ -1,6 +1,6 @@
 # Goal 004 proposal — pool-stable membership and short-window identifiability
 
-Status: active — Task 3 passed; Task 4 development-simulation design is next
+Status: active — Task 3 passed; Task 4 development design awaits approval
 Proposed: 2026-08-14
 
 ## Decision question
@@ -128,6 +128,13 @@ prior-to-posterior information gain, and future discovery prediction.
 Nested-pool stability must be tested by adding the fringe as an independent
 membership stratum and checking whether the fitted core posterior changes,
 including through any camera effects shared by the strata.
+
+The bounded design is now specified in
+[`Task4DevelopmentSimulationDesign.md`](Task4DevelopmentSimulationDesign.md).
+It freezes 180 class-aware synthetic datasets, 750 scheduled Stan fits,
+matching no-data prior forecasts, an independent-fringe diagnostic, and
+decision gates before implementation or computation. No Task 4 simulation has
+yet been generated or fitted.
 
 ### Task 5 — newly frozen held-out screen
 

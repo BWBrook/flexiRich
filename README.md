@@ -83,6 +83,8 @@ reduce four-week pool dependence while making the contribution of prior
 knowledge explicit. Its analytical screen and prior-only calibration are
 complete, and the minimal fixed-class core model has passed its Stan/R bridge,
 prior-concordance, and synthetic-smoke gates. Development calibration and a
-genuine core-plus-fringe stability test remain for Task 4. This is a new
+genuine core-plus-fringe stability test remain for Task 4; their bounded
+[development design](docs/goals/004-pool-stable-membership/Task4DevelopmentSimulationDesign.md)
+is now proposed for approval before implementation. This is a new
 candidate-development problem, not a retuning of Goal003, and Judbury outcomes
 remain unopened.
