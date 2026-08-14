@@ -1,6 +1,6 @@
 # Goal 004 proposal — pool-stable membership and short-window identifiability
 
-Status: active — Task 2 prior-only calibration frozen; no empirical access
+Status: active — Task 2 complete; Task 3 minimal model is next
 Proposed: 2026-08-14
 
 ## Decision question
