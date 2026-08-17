@@ -1,6 +1,6 @@
 # Goal 004 proposal — pool-stable membership and short-window identifiability
 
-Status: active — Task 4 implementation built; local clean-commit checks pending
+Status: active — Task 4 implementation verified locally; remote batch awaits launch approval
 Proposed: 2026-08-14
 
 ## Decision question
@@ -133,8 +133,9 @@ The bounded design is now specified in
 [`Task4DevelopmentSimulationDesign.md`](Task4DevelopmentSimulationDesign.md).
 It freezes 180 class-aware synthetic datasets, 750 scheduled Stan fits,
 matching no-data prior forecasts, an independent-fringe diagnostic, and
-decision gates before computation. The implementation has been built, but its
-clean-commit Stan bridge and end-to-end smoke remain to be run. No Task 4
+decision gates before computation. The implementation, nested-model bridge,
+prior-concordance check, and one-fit end-to-end smoke are complete and recorded
+in [`Task4ImplementationOutcome.md`](Task4ImplementationOutcome.md). No Task 4
 development batch has yet been launched, and no scientific gate outcome
 exists.
 
