@@ -1,0 +1,10 @@
+"scenario_id","scenario_order","fidelity","true_richness","routine_members","occasional_members","true_routine_median_rate","true_occasional_median_rate","true_log_rate_sd","flipped_count","sd_camera"
+"aligned_low",1,"aligned",10,9,1,0.002,5e-04,1,0,0.35
+"aligned_mid",2,"aligned",25,22,3,0.002,5e-04,1,0,0.35
+"aligned_high",3,"aligned",40,35,5,0.002,5e-04,1,0,0.35
+"weak_signal_low",4,"weak_signal",10,9,1,0.00184037530124975,0.000920187650624876,1,0,0.35
+"weak_signal_mid",5,"weak_signal",25,22,3,0.00184037530124975,0.000920187650624876,1,0,0.35
+"weak_signal_high",6,"weak_signal",40,35,5,0.00184037530124975,0.000920187650624876,1,0,0.35
+"ten_percent_flipped_low",7,"ten_percent_flipped",10,9,1,0.002,5e-04,1,5,0.35
+"ten_percent_flipped_mid",8,"ten_percent_flipped",25,22,3,0.002,5e-04,1,5,0.35
+"ten_percent_flipped_high",9,"ten_percent_flipped",40,35,5,0.002,5e-04,1,5,0.35

@@ -1,6 +1,6 @@
 # Goal004 Task 4 — bounded development simulation design
 
-Status: proposed and frozen for collaborator review; implementation is not yet authorised
+Status: approved and frozen; implementation built, development batch not run
 Prepared: 2026-08-14
 
 ## Decision question
@@ -524,9 +524,9 @@ commit, with at most eight concurrent four-chain fits. Once the process is
 verified to have started and produced genuine progress, monitoring returns to
 the collaborator under the repository's heavy-compute handoff rule.
 
-## Approval gate
+## Approval record
 
-Implementation requires collaborator approval of:
+The collaborator approved implementation of:
 
 1. the 180-dataset, 750-fit development grid;
 2. the class-fidelity generators and effort-stratified ten-replicate design;
