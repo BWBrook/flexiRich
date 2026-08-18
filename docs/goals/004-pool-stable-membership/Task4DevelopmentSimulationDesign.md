@@ -1,6 +1,6 @@
 # Goal004 Task 4 — bounded development simulation design
 
-Status: approved and frozen; implementation verified locally, development batch not run
+Status: completed unchanged; prespecified decision `TASK4_STOP`
 Prepared: 2026-08-14
 
 ## Decision question

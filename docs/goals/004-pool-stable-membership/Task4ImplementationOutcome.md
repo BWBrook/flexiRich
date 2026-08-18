@@ -1,6 +1,6 @@
 # Goal004 Task 4 implementation outcome
 
-Status: implementation verified locally; development batch not run
+Status: implementation verified locally; superseded by completed Task 4 decision
 Recorded: 2026-08-17
 Implementation commit: `eed27da7e996a46e8ee8f81089805c9ad29d73af`
 
@@ -81,3 +81,7 @@ The implementation is suitable for the frozen development batch. Launching it
 will be a new, committed heavy-compute action on `deep-server`. A completed
 batch may return `TASK4_PASS`, `TASK4_STOP`, or `TASK4_EXECUTION_STOP`; this
 document does not prejudge that result.
+
+The batch subsequently completed at the same commit and returned
+`TASK4_STOP`. See [`Decision.md`](Decision.md); this implementation record
+remains the pre-run verification record.

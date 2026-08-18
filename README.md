@@ -76,15 +76,13 @@ empirical Judbury fitting. The
 records both the original screen and a denominator-only correction that left
 the `SCREEN_STOP` decision unchanged.
 
-The active
-[Goal004 direction](docs/goals/004-pool-stable-membership/Goal.md) asks whether
-externally defined candidate strata and a count-scale membership prior can
-reduce four-week pool dependence while making the contribution of prior
-knowledge explicit. Its analytical screen and prior-only calibration are
-complete, and the minimal fixed-class core model has passed its Stan/R bridge,
-prior-concordance, and synthetic-smoke gates. Development calibration and a
-genuine core-plus-fringe stability test remain for Task 4; their bounded
-[development design](docs/goals/004-pool-stable-membership/Task4DevelopmentSimulationDesign.md)
-is now proposed for approval before implementation. This is a new
-candidate-development problem, not a retuning of Goal003, and Judbury outcomes
-remain unopened.
+Goal004 tested whether externally defined encounter classes and independent
+core/fringe membership strata could stabilise four-week richness inference.
+Its frozen 180-dataset, 750-fit development screen completed without an
+execution failure. The candidate solved the nested-pool problem and improved
+on Goal003, but failed prespecified short-window calibration, catastrophic-
+error, future-identity, and encounter-rate-prior-sensitivity gates. Goal004 is
+therefore stopped before a held-out screen or empirical Judbury fitting. The
+[Goal004 decision](docs/goals/004-pool-stable-membership/Decision.md) records
+both the useful advances and the remaining rate--richness identifiability
+limit.
