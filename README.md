@@ -87,11 +87,13 @@ therefore stopped before a held-out screen or empirical Judbury fitting. The
 both the useful advances and the remaining rate--richness identifiability
 limit.
 
-Goal005 is now in design. It asks when deployment duration and genuinely
-independent encounter-rate calibration make the same finite-pool estimand
-decision-stable. Its synthetic information-ceiling screen will compare 4, 8,
-12, 16, and 26 weeks under exact class-distribution and candidate-rate oracle
-conditions before any larger calibration grid is authorised. Judbury
-detections remain protected for Goal006 and Huon Ridge remains untouched
-external validation for Goal007. See the
-[Goal005 proposal](docs/goals/005-duration-calibration-frontier/Goal.md).
+Goal005 now maps deployment duration against genuinely independent
+encounter-rate calibration. Its frozen 180-dataset, 360-fit synthetic
+information-ceiling screen completed cleanly and was independently replayed.
+Even exact candidate rates did not make four or eight weeks meet the common
+decision standard. Both exact class-distribution and candidate-rate oracles
+passed at 12, 16, and 26 weeks, making class-level calibration the next
+bounded test. Judbury detections remain protected for Goal006 and Huon Ridge
+remains untouched external validation for Goal007. See the
+[Goal005 decision](docs/goals/005-duration-calibration-frontier/Task2Decision.md)
+and [Task 3 proposal](docs/goals/005-duration-calibration-frontier/Task3Design.md).

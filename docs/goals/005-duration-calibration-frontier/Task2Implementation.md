@@ -1,6 +1,6 @@
 # Goal005 Task 2 — frozen information-ceiling implementation
 
-Status: implemented and locally verified; heavy screen not yet run
+Status: complete and independently audited
 Frozen: 2026-08-20
 
 ## Scientific contract
@@ -74,3 +74,13 @@ Before the heavy run:
 
 The heavy run is resumable only from matching metadata and manifest hashes.
 Interrupted staging is preserved for diagnosis rather than overwritten.
+
+## Outcome
+
+The frozen screen completed on `deep-server` at commit
+`b453df19d3764bb7a4efecbb5aecb9deb41e195a`. All 180 datasets and 360 fits
+completed, all fits were terminal clean, and an independent gate replay
+matched every one of the 170 decision rows. Four and eight weeks were
+classified `CLOSED_ORACLE_FAIL`; 12, 16, and 26 weeks were classified
+`CLASS_CALIBRATION_ELIGIBLE`. See `Task2Decision.md` for the evidence and
+scientific interpretation.

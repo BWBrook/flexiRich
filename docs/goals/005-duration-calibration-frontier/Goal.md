@@ -1,6 +1,6 @@
 # Goal 005 — deployment-duration and encounter-calibration frontier
 
-Status: active; Task 1 frozen, Task 2 implemented pending smoke and heavy run
+Status: active; Task 2 complete and audited, Task 3 proposed
 Proposed: 2026-08-20
 
 ## Decision question
@@ -183,6 +183,11 @@ The collaborator approved the Goal005--Goal007 sequence on 2026-08-20,
 including 4/8/12-week primary durations, 16/26-week anchors, strict leakage
 protection, Judbury empirical development before Huon Ridge, and Huon Ridge as
 the eventual external validation dataset. The Task 1 design and thresholds
-were approved on 2026-08-20. Task 2 uses the frozen 180-dataset, 360-fit
+were approved on 2026-08-20. Task 2 used the frozen 180-dataset, 360-fit
 information-ceiling contract recorded in `Task1Design.md`; its protected
-synthetic implementation is recorded in `Task2Implementation.md`.
+synthetic implementation is recorded in `Task2Implementation.md`. The run
+completed and independently replayed all decision rows: 4 and 8 weeks failed
+both information ceilings, while 12, 16, and 26 weeks passed both and are
+eligible for class-level calibration. The evidence and interpretation are
+recorded in `Task2Decision.md`; the bounded next experiment is proposed in
+`Task3Design.md`.
