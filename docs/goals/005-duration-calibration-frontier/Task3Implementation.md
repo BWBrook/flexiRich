@@ -1,6 +1,6 @@
 # Goal005 Task 3 — class-calibration implementation
 
-Status: **launch-ready; heavy run not started**
+Status: **approved and launch-ready; heavy run not started**
 
 ## Frozen surface
 
@@ -41,10 +41,9 @@ from compact pair evidence, independently applies the precision-prefix rule,
 and reconciles the three duration-frontier decisions. A deliberate gate-value
 corruption is detected by its focused test.
 
-## Remaining decision boundary
+## Approved launch boundary
 
-No Task 3 heavy fit has been launched. The collaborator must first approve the
-prespecified precision grid and the Task 4 transfer stress already recorded in
-`Task3Design.md`. After approval, the final clean pushed commit receives one
-short exact-commit smoke and the 756-fit batch can be launched on `deep-server`
-in a named `tmux` session.
+The collaborator approved the prespecified precision grid and Task 4 transfer
+stress on 2026-08-20. The final clean pushed commit receives one short
+exact-commit smoke before the 756-fit batch is launched on `deep-server` in a
+named `tmux` session.

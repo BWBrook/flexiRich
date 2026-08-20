@@ -1,6 +1,6 @@
 # Goal005 Task 3 — bounded class-calibration frontier
 
-Status: implemented and locally verified; frozen heavy run awaiting collaborator approval
+Status: approved and frozen for the heavy synthetic run
 Prepared: 2026-08-20
 
 ## Decision question
@@ -76,7 +76,7 @@ detection streams. Within each replicate:
 - calibration information is independent of target membership and target
   detections.
 
-The proposed frozen seeds are:
+The frozen seeds are:
 
 - ecological/detection stream: `660000000 + replicate`;
 - external-calibration stream: `670000000 + replicate`;
@@ -148,7 +148,7 @@ a separate bounded design and is not silently added to this grid.
 ## Task 4 stress frozen before Task 3 outcomes
 
 To prevent a successful Task 3 cell from choosing its own robustness test, the
-proposed transfer stress is fixed now. At the smallest duration with a finite
+transfer stress is fixed now. At the smallest duration with a finite
 class frontier, Task 4 will use the coarsest passing precision and new seeds to
 compare:
 

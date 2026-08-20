@@ -1,6 +1,6 @@
 # Goal 005 — deployment-duration and encounter-calibration frontier
 
-Status: active; Task 2 complete and audited, Task 3 launch-ready pending approval
+Status: active; Task 2 complete and audited, Task 3 approved for launch
 Proposed: 2026-08-20
 
 ## Decision question
@@ -191,5 +191,5 @@ both information ceilings, while 12, 16, and 26 weeks passed both and are
 eligible for class-level calibration. The evidence and interpretation are
 recorded in `Task2Decision.md`. The bounded next experiment is specified in
 `Task3Design.md`; its implementation and local verification are recorded in
-`Task3Implementation.md`, but its heavy run remains unstarted pending explicit
-approval of the precision grid and transfer-stress contract.
+`Task3Implementation.md`. The collaborator approved the frozen calibration
+grid and prespecified Task 4 transfer-stress contract on 2026-08-20.

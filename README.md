@@ -96,4 +96,4 @@ passed at 12, 16, and 26 weeks, making class-level calibration the next
 bounded test. Judbury detections remain protected for Goal006 and Huon Ridge
 remains untouched external validation for Goal007. See the
 [Goal005 decision](docs/goals/005-duration-calibration-frontier/Task2Decision.md)
-and [Task 3 proposal](docs/goals/005-duration-calibration-frontier/Task3Design.md).
+and [approved Task 3 design](docs/goals/005-duration-calibration-frontier/Task3Design.md).
