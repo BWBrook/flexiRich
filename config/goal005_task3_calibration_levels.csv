@@ -1,0 +1,8 @@
+precision_id,precision_code,multiplicative_factor,calibration_sd,calibration_mode
+C0,1,1,0,exact
+F1.10,2,1.1,0.048628536318075,external_class
+F1.25,3,1.25,0.113850842706467,external_class
+F1.50,4,1.5,0.206873754470195,external_class
+F2,5,2,0.353653019151067,external_class
+F3,6,3,0.560526773621262,external_class
+F5,7,5,0.821156881008601,external_class
