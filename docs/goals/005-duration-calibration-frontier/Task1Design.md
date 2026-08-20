@@ -1,6 +1,6 @@
 # Goal005 Task 1 — calibration estimands and oracle-screen design
 
-Status: proposed; no Goal005 simulation or Stan fit run
+Status: approved and frozen; no Goal005 heavy fit grid run
 Prepared: 2026-08-20
 
 ## Task decision
@@ -263,5 +263,8 @@ Task 1 is ready to close when the collaborator approves:
 5. the pruning rule that prevents calibration work on an oracle-infeasible
    duration.
 
-Until then, no Goal005 simulation seed, Stan model, or decision grid is frozen
-or run.
+The collaborator approved all five items on 2026-08-20. The manifests, seed
+rules, candidate-rate oracle, and decision gates are now frozen for Task 2.
+Local deterministic simulations and contract tests are permitted; the
+360-fit information-ceiling grid remains unrun until a committed two-oracle
+smoke passes.
