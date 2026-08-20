@@ -236,3 +236,30 @@ testthat::test_that("Goal005 Task 2 result artifact preserves all gate rows", {
     "status=TASK2_COMPLETE"
   )
 })
+
+testthat::test_that("Goal005 Task 2 audit independently replays every gate", {
+  input <- .goal005_task2_gate_fixture()
+  production <- evaluate_goal005_task2_gates(
+    input$manifest,
+    input$fit_status,
+    input$richness
+  )
+  replayed <- replay_goal005_task2_gates(production$pairs)
+  comparison <- .goal005_task2_compare_gates(
+    replayed,
+    production$gates
+  )
+  decision <- .goal005_task2_replay_decision(replayed)
+
+  testthat::expect_identical(nrow(replayed), 170L)
+  testthat::expect_true(all(comparison$all_match))
+  testthat::expect_identical(
+    decision$pruning$task3_path,
+    production$pruning$task3_path
+  )
+
+  corrupted <- production$gates
+  corrupted$value[[1L]] <- corrupted$value[[1L]] + 1
+  comparison <- .goal005_task2_compare_gates(replayed, corrupted)
+  testthat::expect_false(all(comparison$all_match))
+})
