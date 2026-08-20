@@ -1,6 +1,6 @@
 # Goal005 Task 3 — bounded class-calibration frontier
 
-Status: proposed; awaiting collaborator approval
+Status: implemented and locally verified; frozen heavy run awaiting collaborator approval
 Prepared: 2026-08-20
 
 ## Decision question
