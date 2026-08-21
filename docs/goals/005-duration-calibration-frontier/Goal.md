@@ -1,6 +1,6 @@
 # Goal 005 — deployment-duration and encounter-calibration frontier
 
-Status: active; Tasks 2 and 3 complete and audited, Task 4 next
+Status: active; Tasks 2 and 3 complete and audited, Task 4 launch pending
 Proposed: 2026-08-20
 
 ## Decision question
@@ -199,4 +199,5 @@ were F3 at 12 weeks and F5 at 16 and 26 weeks. The evidence, including the
 sampler-driven qualification on the 12-week F5 failure, is recorded in
 `Task3Decision.md`. The prespecified Task 4 stress therefore proceeds at 12
 weeks and F3; its exact paired design and fresh seed contract are recorded in
-`Task4Design.md`.
+`Task4Design.md`. The bounded implementation and local verification are
+recorded in `Task4Implementation.md`.
