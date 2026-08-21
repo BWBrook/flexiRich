@@ -1,6 +1,6 @@
 # Goal005 Task 4 — transfer-stress implementation
 
-Status: implemented and locally verified; exact-commit smoke pending
+Status: implemented, locally verified, and launch-ready
 
 ## Frozen surface
 
@@ -44,5 +44,8 @@ Focused checks cover:
 - protected-outcome isolation.
 
 The complete repository test suite passed without warnings or failures on
-2026-08-21. One exact-commit three-profile Stan smoke remains required before
-the frozen 108-fit run is launched on `deep-server`.
+2026-08-21. A three-profile Stan smoke at implementation commit `6966be5`
+completed with all fits terminal clean, all posterior richness PMFs normalised,
+all predictions available, sampler outputs compressed, and truth excluded from
+fitted data. The final pushed launch commit receives the same short smoke
+before the frozen 108-fit run starts on `deep-server`.

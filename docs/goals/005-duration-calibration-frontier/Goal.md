@@ -1,6 +1,6 @@
 # Goal 005 — deployment-duration and encounter-calibration frontier
 
-Status: active; Tasks 2 and 3 complete and audited, Task 4 launch pending
+Status: active; Tasks 2 and 3 complete and audited, Task 4 launch-ready
 Proposed: 2026-08-20
 
 ## Decision question
