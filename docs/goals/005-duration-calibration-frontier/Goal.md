@@ -1,6 +1,6 @@
 # Goal 005 — deployment-duration and encounter-calibration frontier
 
-Status: active; Task 2 complete and audited, Task 3 approved for launch
+Status: active; Tasks 2 and 3 complete and audited, Task 4 next
 Proposed: 2026-08-20
 
 ## Decision question
@@ -192,4 +192,11 @@ eligible for class-level calibration. The evidence and interpretation are
 recorded in `Task2Decision.md`. The bounded next experiment is specified in
 `Task3Design.md`; its implementation and local verification are recorded in
 `Task3Implementation.md`. The collaborator approved the frozen calibration
-grid and prespecified Task 4 transfer-stress contract on 2026-08-20.
+grid and prespecified Task 4 transfer-stress contract on 2026-08-20. The
+frozen Task 3 run completed all 108 datasets and 756 fits, and an independent
+implementation replayed all 357 decision rows exactly. Class-level frontiers
+were F3 at 12 weeks and F5 at 16 and 26 weeks. The evidence, including the
+sampler-driven qualification on the 12-week F5 failure, is recorded in
+`Task3Decision.md`. The prespecified Task 4 stress therefore proceeds at 12
+weeks and F3; its exact paired design and fresh seed contract are recorded in
+`Task4Design.md`.

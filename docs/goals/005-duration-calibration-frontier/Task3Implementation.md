@@ -1,6 +1,6 @@
 # Goal005 Task 3 — class-calibration implementation
 
-Status: **approved and launch-ready; heavy run not started**
+Status: **complete and independently audited**
 
 ## Frozen surface
 
@@ -41,9 +41,18 @@ from compact pair evidence, independently applies the precision-prefix rule,
 and reconciles the three duration-frontier decisions. A deliberate gate-value
 corruption is detected by its focused test.
 
-## Approved launch boundary
+## Heavy-run outcome
+
+The frozen run at commit
+`da53f6c88e4ffc6028cf5297fd3d6d77a29e5763` completed all 108 datasets and
+756 fits. The independent replay matched all 357 gates and all three frontier
+decisions. The selected frontier is 12 weeks/F3; 16 and 26 weeks both passed
+through F5. Full interpretation and the bounded Task 4 handoff are recorded in
+`Task3Decision.md`.
+
+## Launch record
 
 The collaborator approved the prespecified precision grid and Task 4 transfer
-stress on 2026-08-20. The final clean pushed commit receives one short
-exact-commit smoke before the 756-fit batch is launched on `deep-server` in a
-named `tmux` session.
+stress on 2026-08-20. The final clean pushed commit received one short
+exact-commit smoke before the 756-fit batch was launched on `deep-server` in
+the named `tmux` session `flexirich-g005-task3`.
