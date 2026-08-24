@@ -99,3 +99,12 @@ rates, 12 weeks is an unstable transition, and longer windows retain
 conditional promise. Judbury detections remain protected for Goal006 and Huon
 Ridge remains untouched external validation for Goal007. See the
 [Goal005 decision](docs/goals/005-duration-calibration-frontier/Decision.md).
+
+Goal006 is now active. It asks whether a leakage-controlled encounter-class
+calibration learned from Judbury's first 52 weeks can reach a conservative
+F2-or-better precision target and support prospective grid-level inference in
+later 12-, 16-, and 26-week windows. Four and eight weeks remain negative
+controls. Later fold outcomes are protected behind a calibration-only stop
+gate, the full 153-week detected pool remains an operational lower reference
+rather than truth, and Huon Ridge remains sealed external validation. See the
+[Goal006 contract](docs/goals/006-judbury-calibration-validation/Goal.md).
