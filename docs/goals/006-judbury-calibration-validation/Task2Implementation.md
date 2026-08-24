@@ -1,6 +1,6 @@
 # Goal006 Task 2 — selection-calibration implementation
 
-Status: implementation complete; frozen recovery batch pending
+Status: complete; frozen recovery returned `TASK2_RECOVERY_FAIL`
 
 Prepared: 2026-08-24
 
@@ -54,3 +54,12 @@ The 30-fit recovery grid is Stan-intensive and must run on `deep-server` from
 a clean, pushed commit. `TASK2_PASS` is required before the empirical
 calibration-only input can be materialised for Task 3. A scientifically clean
 `TASK2_RECOVERY_FAIL` is a stop, not an invitation to retune the model.
+
+## Outcome
+
+The exact-commit batch completed 30/30 terminal-clean fits and independently
+replayed all 12 gate rows. Eleven gates passed. Two clean fits had
+factor-three errors in the occasional-class location, failing the frozen
+requirement of fewer than two catastrophic cases. Goal006 therefore stops as
+`CALIBRATION_FEASIBILITY_FAIL`; full evidence and interpretation are recorded
+in [`Decision.md`](Decision.md).

@@ -100,7 +100,7 @@ conditional promise. Judbury detections remain protected for Goal006 and Huon
 Ridge remains untouched external validation for Goal007. See the
 [Goal005 decision](docs/goals/005-duration-calibration-frontier/Decision.md).
 
-Goal006 is now active. It asks whether a leakage-controlled encounter-class
+Goal006 asked whether a leakage-controlled encounter-class
 calibration learned from Judbury's first 52 weeks can reach a conservative
 F2-or-better precision target and support prospective grid-level inference in
 later 12-, 16-, and 26-week windows. Four and eight weeks remain negative
@@ -108,9 +108,15 @@ controls. Later fold outcomes are protected behind a calibration-only stop
 gate, the full 153-week detected pool remains an operational lower reference
 rather than truth, and Huon Ridge remains sealed external validation. See the
 [Goal006 contract](docs/goals/006-judbury-calibration-validation/Goal.md).
-Its proposed Task 1 freeze is documented in the
+Its Task 1 freeze is documented in the
 [Goal006 Task 1 design](docs/goals/006-judbury-calibration-validation/Task1Design.md);
 the approved selection-adjusted calibration implementation and frozen
 synthetic-recovery path are documented in the
 [Goal006 Task 2 implementation](docs/goals/006-judbury-calibration-validation/Task2Implementation.md).
-No empirical class calibration or later forecast outcome has yet been fitted.
+The frozen recovery run was computationally clean and passed 11/12 gates, but
+two occasional-class estimates exceeded the factor-three error guard where
+fewer than two were allowed. Goal006 therefore closes as
+`CALIBRATION_FEASIBILITY_FAIL`; no empirical class calibration or later
+forecast outcome was opened, and the candidate is not ready for Huon Ridge.
+See the
+[Goal006 decision](docs/goals/006-judbury-calibration-validation/Decision.md).

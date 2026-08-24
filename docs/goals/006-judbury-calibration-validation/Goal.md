@@ -1,7 +1,13 @@
 # Goal 006 — leakage-controlled Judbury calibration and prospective grid validation
 
-Status: active; Task 1 approved, Task 2 implementation frozen pending recovery
+Status: complete — `CALIBRATION_FEASIBILITY_FAIL`
 Proposed and approved: 2026-08-24
+
+Final adjudication: 2026-08-24. The frozen Task 2 recovery run passed 11/12
+gates but produced two factor-three occasional-class errors, where fewer than
+two were permitted. Under the prespecified stop rule, Tasks 3--5 were not run
+and no empirical calibration or later outcome was opened. See
+[`Decision.md`](Decision.md).
 
 ## Decision question
 
