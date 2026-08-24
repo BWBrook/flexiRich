@@ -1,7 +1,6 @@
 # Goal006 Task 1 — frozen empirical and decision contract
 
-Status: proposed and executable; awaiting collaborator confirmation before
-Task 2 heavy computation
+Status: approved and frozen; Task 2 implementation authorised
 
 Prepared: 2026-08-24
 

@@ -110,4 +110,7 @@ rather than truth, and Huon Ridge remains sealed external validation. See the
 [Goal006 contract](docs/goals/006-judbury-calibration-validation/Goal.md).
 Its proposed Task 1 freeze is documented in the
 [Goal006 Task 1 design](docs/goals/006-judbury-calibration-validation/Task1Design.md);
-no calibration or later forecast outcome has yet been fitted.
+the approved selection-adjusted calibration implementation and frozen
+synthetic-recovery path are documented in the
+[Goal006 Task 2 implementation](docs/goals/006-judbury-calibration-validation/Task2Implementation.md).
+No empirical class calibration or later forecast outcome has yet been fitted.

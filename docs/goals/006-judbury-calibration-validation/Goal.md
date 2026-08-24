@@ -1,6 +1,6 @@
 # Goal 006 — leakage-controlled Judbury calibration and prospective grid validation
 
-Status: active; formal design approved, Task 1 contract awaiting confirmation
+Status: active; Task 1 approved, Task 2 implementation frozen pending recovery
 Proposed and approved: 2026-08-24
 
 ## Decision question
@@ -196,10 +196,10 @@ output contract. Existing aggregate Goal003 results are declared as known
 historical context and cannot set new thresholds. No class-specific calibration
 or forecast-fold result is inspected.
 
-The proposed executable contract, numerical gates, and outcome-free fold
+The approved executable contract, numerical gates, and outcome-free fold
 manifest are recorded in [`Task1Design.md`](Task1Design.md). They remain
-unexercised against a class-specific calibration or forecast outcome pending
-collaborator confirmation.
+unexercised against an empirical class-specific calibration or forecast
+outcome.
 
 ### Task 2 — implement and validate the calibration layer
 
@@ -208,6 +208,10 @@ bridge on small cases, implement the smallest valid Stan/R path, and test
 recovery under a bounded synthetic design with known class locations. Verify
 that the aggregate artifact excludes identity and membership leakage. This
 task uses no empirical Judbury detections.
+
+The implementation, verification surface, and frozen recovery entry points are
+recorded in [`Task2Implementation.md`](Task2Implementation.md). The 30-fit
+recovery result is the remaining Task 2 decision evidence.
 
 ### Task 3 — first-year calibration feasibility gate
 
