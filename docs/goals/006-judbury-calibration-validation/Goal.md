@@ -1,6 +1,6 @@
 # Goal 006 — leakage-controlled Judbury calibration and prospective grid validation
 
-Status: active; formal design approved, Task 1 not yet frozen
+Status: active; formal design approved, Task 1 contract awaiting confirmation
 Proposed and approved: 2026-08-24
 
 ## Decision question
@@ -195,6 +195,11 @@ schemas, comparator eligibility, numerical gates, stop rules, and compact
 output contract. Existing aggregate Goal003 results are declared as known
 historical context and cannot set new thresholds. No class-specific calibration
 or forecast-fold result is inspected.
+
+The proposed executable contract, numerical gates, and outcome-free fold
+manifest are recorded in [`Task1Design.md`](Task1Design.md). They remain
+unexercised against a class-specific calibration or forecast outcome pending
+collaborator confirmation.
 
 ### Task 2 — implement and validate the calibration layer
 
