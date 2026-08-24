@@ -91,8 +91,11 @@ Goal005 maps deployment duration against genuinely independent encounter-rate
 calibration. Exact candidate rates did not make four or eight weeks meet the
 common standard. A subsequent 108-dataset, 756-fit class-calibration screen was
 independently replayed and found conservative frontiers of F3 at 12 weeks and
-F5 at 16 and 26 weeks. The next bounded test applies the prespecified common
-25% calibration-transfer bias at 12 weeks/F3. Judbury detections remain
-protected for Goal006 and Huon Ridge remains untouched external validation for
-Goal007. See the [Task 3 decision](docs/goals/005-duration-calibration-frontier/Task3Decision.md)
-and [Task 4 design](docs/goals/005-duration-calibration-frontier/Task4Design.md).
+F5 at 16 and 26 weeks. The selected 12-week/F3 cell then failed its fresh
+unbiased replication standard despite clean computation; the imposed 25%
+transfer shifts themselves were modest. Goal005 therefore closes as
+`CONDITIONAL_FRONTIER_ONLY`: four and eight weeks are not rescued by exact
+rates, 12 weeks is an unstable transition, and longer windows retain
+conditional promise. Judbury detections remain protected for Goal006 and Huon
+Ridge remains untouched external validation for Goal007. See the
+[Goal005 decision](docs/goals/005-duration-calibration-frontier/Decision.md).

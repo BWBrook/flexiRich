@@ -1,6 +1,6 @@
 # Goal005 Task 4 — transfer-stress implementation
 
-Status: implemented, locally verified, and launch-ready
+Status: implemented, completed, and independently audited
 
 ## Frozen surface
 
@@ -47,5 +47,9 @@ The complete repository test suite passed without warnings or failures on
 2026-08-21. A three-profile Stan smoke at implementation commit `6966be5`
 completed with all fits terminal clean, all posterior richness PMFs normalised,
 all predictions available, sampler outputs compressed, and truth excluded from
-fitted data. The final pushed launch commit receives the same short smoke
-before the frozen 108-fit run starts on `deep-server`.
+fitted data. The final pushed launch commit passed the same short smoke before
+the frozen 108-fit run started on `deep-server`.
+
+The frozen run subsequently completed at commit `63615dad` and its independent
+51+6-row replay passed. The scientific outcome is recorded in
+`Task4Decision.md`.

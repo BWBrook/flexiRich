@@ -1,6 +1,6 @@
 # Goal 005 — deployment-duration and encounter-calibration frontier
 
-Status: active; Tasks 2 and 3 complete and audited, Task 4 launch-ready
+Status: complete; `CONDITIONAL_FRONTIER_ONLY`
 Proposed: 2026-08-20
 
 ## Decision question
@@ -197,7 +197,12 @@ frozen Task 3 run completed all 108 datasets and 756 fits, and an independent
 implementation replayed all 357 decision rows exactly. Class-level frontiers
 were F3 at 12 weeks and F5 at 16 and 26 weeks. The evidence, including the
 sampler-driven qualification on the 12-week F5 failure, is recorded in
-`Task3Decision.md`. The prespecified Task 4 stress therefore proceeds at 12
+`Task3Decision.md`. The prespecified Task 4 stress therefore proceeded at 12
 weeks and F3; its exact paired design and fresh seed contract are recorded in
 `Task4Design.md`. The bounded implementation and local verification are
-recorded in `Task4Implementation.md`.
+recorded in `Task4Implementation.md`. The frozen Task 4 run completed all 36
+datasets and 108 fits, and its independent replay matched all 57 decision
+rows. The fresh unbiased 12-week/F3 profile failed four scientific rows despite
+all fits being terminal clean; all six direct transfer-shift rows passed. The
+evidence is recorded in `Task4Decision.md`, and the final duration/calibration
+surface and protected empirical handoff are recorded in `Decision.md`.
