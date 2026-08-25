@@ -1,6 +1,6 @@
 # Goal 007 — rare-encounter regularisation and synthetic downstream validation
 
-Status: proposed for collaborator approval
+Status: active; Task 1 executable contract implemented, scientific freeze pending
 Prepared: 2026-08-25
 
 ## Decision question
@@ -220,3 +220,11 @@ candidate-specific empirical calibration, site-level occupancy, spatial
 borrowing, seasonal rate dynamics, reptiles, anonymous species, or a package
 API. Those are possible later hypotheses, not fallback branches within this
 bounded goal.
+
+## Implementation record
+
+The proposed Task 1 design has been encoded without running a Goal007 fit or
+reading an empirical detection outcome. The implementation and local evidence
+are recorded in [`Task1Implementation.md`](Task1Implementation.md). The
+scientific thresholds and model candidates remain awaiting collaborator freeze
+before Task 2 model implementation and sampling.

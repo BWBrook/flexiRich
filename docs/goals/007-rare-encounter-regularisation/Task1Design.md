@@ -1,6 +1,6 @@
 # Goal007 Task 1 — proposed frozen synthetic contract
 
-Status: proposed for collaborator approval; not yet executable or frozen
+Status: executable and locally verified; proposed scientific contract not yet frozen
 Prepared: 2026-08-25
 
 ## Task decision
@@ -280,7 +280,7 @@ are not altered while running.
 
 ## Approval boundary
 
-No implementation is authorised by this draft. Collaborator approval freezes
-the candidates, profiles, denominators, thresholds, selection order, duration
-rule, and evidence boundary before Task 2 code is written or any Goal007 fit is
-run.
+The executable Task 1 contract is implemented, but collaborator approval is
+still required to freeze the candidates, profiles, denominators, thresholds,
+selection order, duration rule, and evidence boundary before Task 2 model code
+is written or any Goal007 fit is run.
