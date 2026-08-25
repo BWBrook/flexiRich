@@ -1,6 +1,6 @@
 # Goal007 Task 2 — shared-shift calibration implementation
 
-Status: model implementation and local validation complete; frozen screen not run
+Status: implementation and local validation complete; frozen screen not run
 Implemented: 2026-08-25
 
 ## Model
@@ -60,15 +60,53 @@ used to alter candidates, profiles, thresholds, or seeds.
 
 The complete local R test suite passed after the model and adapter were added.
 
-## Remaining Task 2 work
+## Recovery and decision layer
 
-The frozen 180-fit screen still requires:
+`R/goal007_recovery.R` creates one compact fit-status row and two recovery rows
+per fit. The two recovery targets are the generating class location and the
+realised finite-candidate class mean. Non-clean fits retain their fixed
+denominators. A core replicate is catastrophic if its fit is non-clean or if
+either class has a factor-three error against either target.
 
-1. compact recovery and artifact summaries for both generator and finite-set
-   targets;
-2. exact evaluation of the 26 Task 2 gates and weak-first F5/F3 selection;
-3. a resumable, non-overwriting remote runner;
-4. an independently implemented compact-evidence audit; and
-5. a clean pushed run commit before launching on `deep-server`.
+The production evaluator applies all 26 frozen gates separately to `shared_F5`
+and `shared_F3`, yielding 52 rows. It chooses F5 whenever F5 passes every gate,
+considers F3 only if F5 fails, and returns `TASK2_STOP` if neither candidate is
+eligible.
+
+`R/goal007_task2_execution.R` freezes the 60 datasets, 180 fits, gate table,
+candidate table, first-52-week effort, source hashes, contract hashes, seed
+rules, Git commit, software versions, and explicit
+`empirical_outcomes_used=false` record. Each fit is published atomically and
+can be resumed only from the same commit, manifests, and worker count. Sampler
+CSV files are compressed after compact summaries and diagnostics have been
+written.
+
+`R/goal007_task2_audit.R` independently recomputes the 52 gate rows,
+eligibility table, catastrophic cases, weak-first decision, and deterministic
+bridges from the compact evidence. It does not call the production gate
+evaluator or its metric helpers. Tests confirm exact agreement on valid
+evidence and rejection after deliberate corruption of a recorded gate.
+
+## Entry points
+
+```bash
+Rscript scripts/check_goal007_calibration_model.R
+Rscript scripts/run_goal007_task2_smoke.R
+Rscript scripts/run_goal007_task2_execution_smoke.R
+Rscript scripts/run_goal007_task2_screen.R
+Rscript scripts/audit_goal007_task2_results.R
+```
+
+The execution smoke runs one shared synthetic dataset through the independent,
+F5, and F3 production fit-and-publication paths. The 180-fit screen is
+Stan-intensive and must run on `deep-server` from a clean pushed commit. Its
+compact results must then pass the separate audit before Task 2 is adjudicated.
+
+## Local verification
+
+The recovery evaluator, execution contract, independent replay, manifest
+freezing, output confinement, and tamper detection pass their focused tests.
+The complete local R suite also passes. An exact-commit execution smoke remains
+the final launch check after the implementation is committed and pushed.
 
 No empirical Judbury or Huon Ridge outcome has been read.

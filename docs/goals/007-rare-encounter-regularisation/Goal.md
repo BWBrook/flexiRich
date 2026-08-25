@@ -1,6 +1,7 @@
 # Goal 007 — rare-encounter regularisation and synthetic downstream validation
 
-Status: active; Task 1 frozen and Task 2 model validated, recovery screen pending
+Status: active; Task 1 frozen and Task 2 implementation complete, recovery
+screen pending
 Prepared: 2026-08-25
 
 ## Decision question
@@ -227,5 +228,6 @@ The proposed Task 1 design has been encoded without reading an empirical
 detection outcome. Its implementation is recorded in
 [`Task1Implementation.md`](Task1Implementation.md). The minimal shared-shift
 model, Stan/R bridges, leakage-safe artifact, and reduced synthetic smoke are
-recorded in [`Task2Implementation.md`](Task2Implementation.md). The frozen
-180-fit recovery screen has not been run.
+recorded in [`Task2Implementation.md`](Task2Implementation.md). The resumable
+screen, compact gate evaluator, and independent replay are now implemented and
+locally verified. The frozen 180-fit recovery screen has not been run.
