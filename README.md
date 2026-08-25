@@ -120,3 +120,12 @@ fewer than two were allowed. Goal006 therefore closes as
 forecast outcome was opened, and the candidate is not ready for Huon Ridge.
 See the
 [Goal006 decision](docs/goals/006-judbury-calibration-validation/Decision.md).
+
+Goal007 is proposed as a wholly synthetic redesign of the fragile
+occasional-class calibration. It compares the unchanged Goal006 model with a
+shared-shift hierarchy that lets routine species inform the common encounter-
+rate scale while keeping uncertainty in the routine--occasional contrast
+explicit. Candidate selection and fresh downstream confirmation are separated,
+and both Judbury detections and Huon Ridge remain sealed. See the proposed
+[Goal007 design](docs/goals/007-rare-encounter-regularisation/Goal.md) and
+[Task 1 contract](docs/goals/007-rare-encounter-regularisation/Task1Design.md).
