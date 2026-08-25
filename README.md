@@ -96,8 +96,8 @@ unbiased replication standard despite clean computation; the imposed 25%
 transfer shifts themselves were modest. Goal005 therefore closes as
 `CONDITIONAL_FRONTIER_ONLY`: four and eight weeks are not rescued by exact
 rates, 12 weeks is an unstable transition, and longer windows retain
-conditional promise. Judbury detections remain protected for Goal006 and Huon
-Ridge remains untouched external validation for Goal007. See the
+conditional promise. Judbury detections remained protected for Goal006 and
+Huon Ridge remained untouched for later external validation. See the
 [Goal005 decision](docs/goals/005-duration-calibration-frontier/Decision.md).
 
 Goal006 asked whether a leakage-controlled encounter-class
@@ -121,11 +121,13 @@ forecast outcome was opened, and the candidate is not ready for Huon Ridge.
 See the
 [Goal006 decision](docs/goals/006-judbury-calibration-validation/Decision.md).
 
-Goal007 is proposed as a wholly synthetic redesign of the fragile
-occasional-class calibration. It compares the unchanged Goal006 model with a
+Goal007 tested a wholly synthetic redesign of the fragile
+occasional-class calibration. It compared the unchanged Goal006 model with a
 shared-shift hierarchy that lets routine species inform the common encounter-
 rate scale while keeping uncertainty in the routine--occasional contrast
-explicit. Candidate selection and fresh downstream confirmation are separated,
-and both Judbury detections and Huon Ridge remain sealed. See the proposed
-[Goal007 design](docs/goals/007-rare-encounter-regularisation/Goal.md) and
-[Task 1 contract](docs/goals/007-rare-encounter-regularisation/Task1Design.md).
+explicit. The frozen 180-fit screen was computationally clean and both F5 and
+F3 reduced occasional-class RMSE, but both failed profile-bias and severe-
+misspecification coverage requirements; F3 also failed the stress-catastrophe
+gate. Goal007 therefore closes as `NO_REGULARISATION_CANDIDATE`. Task 3 was not
+run, and both Judbury detections and Huon Ridge remain sealed. See the
+[Goal007 decision](docs/goals/007-rare-encounter-regularisation/Decision.md).

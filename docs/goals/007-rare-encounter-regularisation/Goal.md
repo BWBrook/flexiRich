@@ -1,7 +1,6 @@
 # Goal 007 — rare-encounter regularisation and synthetic downstream validation
 
-Status: active; Task 1 frozen and Task 2 implementation complete, recovery
-screen pending
+Status: complete — `NO_REGULARISATION_CANDIDATE`
 Prepared: 2026-08-25
 
 ## Decision question
@@ -229,5 +228,7 @@ detection outcome. Its implementation is recorded in
 [`Task1Implementation.md`](Task1Implementation.md). The minimal shared-shift
 model, Stan/R bridges, leakage-safe artifact, and reduced synthetic smoke are
 recorded in [`Task2Implementation.md`](Task2Implementation.md). The resumable
-screen, compact gate evaluator, and independent replay are now implemented and
-locally verified. The frozen 180-fit recovery screen has not been run.
+screen completed 180/180 terminal-clean fits and the independent replay matched
+all 52 candidate gate rows. F5 passed 24/26 gates and F3 passed 23/26; neither
+was eligible, so Task 3 was not run and no empirical evidence was opened. The
+full adjudication is recorded in [`Decision.md`](Decision.md).

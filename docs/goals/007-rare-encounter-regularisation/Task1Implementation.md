@@ -9,7 +9,7 @@ The proposed Goal007 design is now represented by one deterministic executable
 authority, `R/goal007_contract.R`. It creates the model candidates, synthetic
 rate profiles, paired Task 2 schedules, both possible Task 3 branches, effort
 windows, seed rules, decision gates, output schemas, and stable content hashes.
-No Goal007 model has been fitted.
+At this Task 1 freeze, no Goal007 model had been fitted.
 
 The implementation reuses the content-frozen 50-candidate pool, operational-
 effort schedule, and outcome-free Goal006 fold table. External verification
@@ -46,5 +46,5 @@ test suite also passed after adding the Goal007 checks.
 This implementation froze the scientific thresholds at commit `fa6e8ae` before
 the shared-shift candidate was fitted. The next bounded tranche was the
 shared-shift Stan/R model, its deterministic bridges, truth-isolating adapter,
-and reduced local smoke. The 180-fit screen remains a later `deep-server` run
-from a new clean pushed commit.
+and reduced local smoke. The later 180-fit `deep-server` outcome is recorded in
+[`Decision.md`](Decision.md).

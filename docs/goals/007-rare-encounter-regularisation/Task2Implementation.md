@@ -1,6 +1,6 @@
 # Goal007 Task 2 — shared-shift calibration implementation
 
-Status: implementation and local validation complete; frozen screen not run
+Status: complete; frozen screen returned `TASK2_STOP`
 Implemented: 2026-08-25
 
 ## Model
@@ -99,14 +99,24 @@ Rscript scripts/audit_goal007_task2_results.R
 
 The execution smoke runs one shared synthetic dataset through the independent,
 F5, and F3 production fit-and-publication paths. The 180-fit screen is
-Stan-intensive and must run on `deep-server` from a clean pushed commit. Its
-compact results must then pass the separate audit before Task 2 is adjudicated.
+Stan-intensive and runs on `deep-server` from a clean pushed commit. Its
+compact results must pass the separate audit before Task 2 is adjudicated.
 
 ## Local verification
 
 The recovery evaluator, execution contract, independent replay, manifest
 freezing, output confinement, and tamper detection pass their focused tests.
-The complete local R suite also passes. An exact-commit execution smoke remains
-the final launch check after the implementation is committed and pushed.
+The complete local R suite passed. The exact-commit production smoke then
+passed all three fit-and-publication branches at commit
+`6afcd2820c9fec0c07e0fe206f9813671c4c6c34`.
+
+## Frozen outcome
+
+The same commit completed all 180 fits on `deep-server` with exit code zero.
+All fits were terminal-clean and all 120 shared-candidate Gaussian artifacts
+passed. The independent audit matched all 52 gate rows and confirmed
+`TASK2_STOP`: F5 passed 24/26 gates and F3 passed 23/26. Neither candidate
+advances to Task 3. Exact results and interpretation are preserved in
+[`Decision.md`](Decision.md).
 
 No empirical Judbury or Huon Ridge outcome has been read.
