@@ -1,6 +1,6 @@
 # Goal007 Task 1 — proposed frozen synthetic contract
 
-Status: executable and locally verified; proposed scientific contract not yet frozen
+Status: frozen for Goal007 synthetic development; executable and locally verified
 Prepared: 2026-08-25
 
 ## Task decision
@@ -280,7 +280,7 @@ are not altered while running.
 
 ## Approval boundary
 
-The executable Task 1 contract is implemented, but collaborator approval is
-still required to freeze the candidates, profiles, denominators, thresholds,
-selection order, duration rule, and evidence boundary before Task 2 model code
-is written or any Goal007 fit is run.
+The executable Task 1 contract was frozen at Git commit `fa6e8ae` before the
+shared-shift model was implemented or a Goal007 fit was run. Candidates,
+profiles, denominators, thresholds, selection order, duration rule, and the
+evidence boundary cannot change in response to Task 2 results.

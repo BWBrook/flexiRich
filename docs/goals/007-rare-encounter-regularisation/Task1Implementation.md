@@ -1,6 +1,6 @@
 # Goal007 Task 1 — executable-contract implementation
 
-Status: complete locally; awaiting collaborator freeze
+Status: complete and frozen
 Implemented: 2026-08-25
 
 ## Outcome
@@ -43,8 +43,8 @@ test suite also passed after adding the Goal007 checks.
 
 ## Boundary
 
-This implementation makes the proposal auditable; it does not itself approve
-the scientific thresholds. Task 2 begins only after collaborator confirmation.
-The next bounded tranche is the shared-shift Stan/R model, its deterministic
-bridges, truth-isolating adapter, and a reduced local smoke. The 180-fit screen
-remains a later frozen `deep-server` run from a clean pushed commit.
+This implementation froze the scientific thresholds at commit `fa6e8ae` before
+the shared-shift candidate was fitted. The next bounded tranche was the
+shared-shift Stan/R model, its deterministic bridges, truth-isolating adapter,
+and reduced local smoke. The 180-fit screen remains a later `deep-server` run
+from a new clean pushed commit.
