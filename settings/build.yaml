@@ -1,0 +1,26 @@
+default_profile: development
+profiles:
+  development:
+    description: Integrated flexiRich working manuscript; incomplete development evidence.
+    manuscript_sources:
+      - ../manuscript/text/main.md
+      - ../manuscript/text/figures.md
+    bibliography: ../references/refs.yaml
+    csl: ../csl/draft-author-date.csl
+    journal: Undecided
+    output_dir: ../outputs/manuscript
+    output_stem: flexirich-working
+    page_numbers: lower_right
+    line_spacing: 1.25
+    line_numbering: continuous
+    figures:
+      placement: pages
+      caption_position: top
+      placeholder_id: figures
+    margins:
+      unit: cm
+      paper_size: a4
+      top: 2.0
+      bottom: 2.0
+      left: 2.5
+      right: 2.5

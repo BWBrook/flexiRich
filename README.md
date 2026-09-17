@@ -3,6 +3,22 @@
 Research implementation and validation of an effort-aware estimator of
 camera-detectable species richness from a finite candidate pool.
 
+The latest development tranche is
+[Goal008](docs/goals/008-ecological-information/Decision.md): checked
+same-species dependence and finite-pool calculations, first-year Judbury
+ecological diagnostics, and a coherent repeat-monitoring experiment proposal.
+It motivates testing species-specific station structure before further
+class-contrast regularisation. Three later raw records were inadvertently
+displayed during worker orientation but excluded from calculations; the
+[exposure record](docs/goals/008-ecological-information/Exposure.md) qualifies
+future temporal-validation claims. Huon Ridge remains untouched.
+
+An incomplete integrated methods-and-application manuscript now lives under
+`manuscript/` and builds through `$HOME/work/makedoc` with
+`make manuscript-check` and `make manuscript`. See
+[manuscript instructions](manuscript/README.md) and the Goal008 reproduction
+commands for the required generated figures.
+
 ## Goal 001
 
 ```sh
