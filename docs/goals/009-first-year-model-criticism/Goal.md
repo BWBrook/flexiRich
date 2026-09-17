@@ -1,6 +1,6 @@
 # Goal009 — first-year model criticism and a forecast contract
 
-State: approved direction, implementation in progress, 17 September 2026.
+State: implemented and remotely launched, 17 September 2026; see Launch.md.
 
 Barry requested implementation following the Goal008 and Fable discussion.
 The integrated methods-and-application paper remains the destination. This
