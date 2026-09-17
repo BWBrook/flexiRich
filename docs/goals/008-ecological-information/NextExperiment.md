@@ -2,6 +2,13 @@
 
 Status: recommendation developed during Goal008, not a frozen production run.
 
+17 September update: [Goal009](../009-first-year-model-criticism/Goal.md)
+implements the revised sequence agreed after Fable's review: first-year model
+criticism, frozen temporal forecasts, then targeted simulations. The small
+joint/sequential bridge below remains an implementation check, not a simulation
+eligibility screen. This original recommendation is retained as development
+history; Goal009 is the current execution contract.
+
 ## Question and ecological meaning
 
 Can retained information about the same named species improve reference-pool

@@ -1,0 +1,3 @@
+fit_id,prior_id,fit_seed,ppc_seed,ppc_draws
+primary,primary,2026091701,2026091721,1000
+tail_wide,tail_wide,2026091711,2026091731,1000

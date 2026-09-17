@@ -208,6 +208,14 @@ was the domestic dog, represented by one positive station-week. This
 selection-limited evidence cannot establish a general quantitative
 routine-occasional encounter-rate contrast.
 
+Detection differed markedly between taxa: 16 of 17 mammal candidates and
+five of 33 bird candidates were photographed. The 29 undetected candidates
+comprised 28 birds and the common wombat. This pattern makes the ecological
+scope of the candidate pool and taxonomic differences in ground-camera
+encounter central to interpretation. It does not establish the membership
+of undetected candidates or show that a binary taxonomic grouping would
+adequately describe their encounter rates.
+
 Effort in the four consecutive 13-week blocks was 819, 576, 172 and 774
 station-days (Fig. [2](#fig-effort)). The low effort in the third block
 makes simple temporal comparisons unsuitable as evidence of seasonal

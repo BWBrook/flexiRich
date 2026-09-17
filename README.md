@@ -3,8 +3,16 @@
 Research implementation and validation of an effort-aware estimator of
 camera-detectable species richness from a finite candidate pool.
 
-The latest development tranche is
-[Goal008](docs/goals/008-ecological-information/Decision.md): checked
+The active implementation is
+[Goal009](docs/goals/009-first-year-model-criticism/Goal.md): first-year
+posterior predictive criticism of the persistent-species/shared-station
+baseline, followed by frozen temporal forecasts and targeted simulations.
+Its [forecast contract](docs/goals/009-first-year-model-criticism/ForecastContract.md)
+also specifies the proposed layers of Huon Ridge assessment. `make test-goal009`
+and `make goal009-check` are local checks; empirical fits require deep-server
+and tmux. No later detection outcomes are read by the Goal009 runner.
+
+[Goal008](docs/goals/008-ecological-information/Decision.md) checked
 same-species dependence and finite-pool calculations, first-year Judbury
 ecological diagnostics, and a coherent repeat-monitoring experiment proposal.
 It motivates testing species-specific station structure before further
