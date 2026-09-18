@@ -1,5 +1,16 @@
 # Goal009 execution and monitoring
 
+**18 September closeout:** the original run completed, but its PPC tables and
+figures contain an effort-indexing defect. Use the corrected local
+`outputs/goal009/ppc-repaired-v2` outputs and [Decision.md](Decision.md).
+The original remote checkout and sampler outputs remain preserved.
+
+Verified closeout: exit marker `0`, both fits clean, and tmux session
+`flexirich-g009-firstyear-v1` no longer present. Its working directory remains
+`/data/codex/repos/flexirich-goal009-20260917`; original outputs remain under
+`outputs/goal009/first-year-v1/` there. Corrected outputs were generated locally
+from copied draws; the remote completion marker does not certify the old PPCs.
+
 The run uses the unchanged Goal003 full-candidate Stan model, the two rows of
 `config/goal009_fits.csv`, and hash-verified first-year tables listed in
 `config/goal009_inputs.csv`. Frozen source identity is recorded in each run's

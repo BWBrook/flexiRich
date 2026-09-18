@@ -3,7 +3,7 @@
 frozen_commit <- "e183888960c6ff5cdc7146e6549bf876f6e3484a"
 paths <- system2("git", c("ls-tree", "-r", "--name-only", frozen_commit, "R"), stdout=TRUE)
 for (path in sort(paths[grepl("[.]R$", paths)])) {
-  source(textConnection(system2("git", c("show", paste0(frozen_commit, ":", path)), stdout=TRUE)))
+  eval(parse(text=system2("git", c("show", paste0(frozen_commit, ":", path)), stdout=TRUE)), envir=.GlobalEnv)
 }
 development <- goal009_read_development()
 manifest <- read.csv("config/goal009_fits.csv")

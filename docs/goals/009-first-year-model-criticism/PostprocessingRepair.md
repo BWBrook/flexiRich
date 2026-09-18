@@ -43,8 +43,23 @@ clean committed source checkout and refuses to overwrite existing outputs.
 No new posterior sampling or ecological assumption is introduced. This local
 postprocessing operation does not alter the frozen deep-server checkout.
 
-Only the corrected predictive tables may support the forthcoming Decision.
+Only the corrected predictive tables may support the Decision.
 The original `COMPLETE` marker describes successful execution, not correctness
 of its predictive postprocessing. The initial interpretation of the original
 PPCs is withdrawn pending replacement. No later Judbury or Huon Ridge outcomes
 are accessed by this repair.
+
+## Verified outcome
+
+The repair was frozen in commit
+`e24e997b7d6d242e04c4afab430da49777279660`. The full local test suite passed
+with warnings treated as failures. An independent methodological specialist
+reproduced the dimension defect, checked the repair and regression, and approved
+the preserved-draw reprocessing contract. Both corrected profiles completed
+with warnings treated as errors and both latent PMFs matched within 1e-12.
+No additional sampler was run.
+
+The scientific interpretation changed materially: aggregate positive-cell
+counts and the third temporal block are reproduced adequately after repair.
+The spatial and temporal structure failures remain. See Decision.md for the
+corrected numbers; do not carry forward the original total-count deficit.

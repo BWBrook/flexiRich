@@ -21,7 +21,11 @@ No build-engine source or settings are modified by this integration.
 Generated figures must already exist before building. They are produced by
 the Goal008 theory and restricted early-Judbury development runners; see
 `docs/goals/008-ecological-information/Decision.md` for reproduction commands
-and data-use limits. Building the manuscript never opens empirical data.
+and data-use limits. The Goal009 criticism figure is produced by
+`Rscript scripts/summarise_goal009_results.R` from corrected predictive checks,
+preserved posterior summaries and the conditional timing diagnostic; see
+`docs/goals/009-first-year-model-criticism/evidence/README.md` for recovery.
+Building the manuscript never opens empirical data.
 
 The CSL file is an unchanged copy of the locally bundled Pandoc default style
 (`/usr/share/pandoc/data/default.csl`); its embedded attribution and licence

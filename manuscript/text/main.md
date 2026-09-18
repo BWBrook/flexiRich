@@ -1,6 +1,6 @@
 # What camera grids can tell us about community richness
 
-**Working methods-and-application manuscript, 12 September 2026.** This is an
+**Working methods-and-application manuscript, 18 September 2026.** This is an
 incomplete research draft. Theoretical diagnostics and early empirical
 description support development; a revised estimator, prospective comparison
 and external validation have not yet been completed. Authorship and journal
@@ -150,6 +150,45 @@ illustrative station pair and compared species on their shared calendar
 occasions with seven active days at both stations. This exploratory matching
 controls calendar and exposure differences, but not temporal dependence.
 
+### First-year model criticism
+
+We fitted the full-candidate baseline to the 52-week development panel,
+retaining one membership state and one persistent log encounter rate per
+species, and sum-to-zero shared station effects. Species log rates followed
+a normal hierarchy. Both prior profiles used $\omega\sim\mathrm{Beta}(1,1)$,
+$\mu_\alpha\sim\mathrm{Normal}(\log(0.02),1.5^2)$ and a half-normal prior
+with scale 0.75 for the station-effect standard deviation. The half-normal
+scale for the among-species standard deviation was 1 in the primary profile
+and 1.5 in the wider-tail sensitivity. These inherited priors were not
+externally calibrated. Taxon and routine/occasional labels were used for
+descriptive summaries, not separate encounter-rate distributions.
+
+Each fit used four chains with 1,000 warmup and 1,000 retained iterations
+per chain. Predictive checks used 1,000 evenly spaced joint draws and the
+observed effort pattern. Membership was drawn once per species in each
+replicate and retained across all its stations and weeks; previously detected
+species had membership one. We distinguished replicated detected richness
+from latent membership richness, whose distribution averaged conditional
+Poisson-binomial distributions over all 4,000 posterior draws. Predictive
+tail fractions and central 90% intervals were descriptive model checks,
+not independent hypothesis tests or calibrated coverage estimates.
+
+Checks included species and taxon counts, four 13-week blocks, adjacent-week
+switches, and station contrasts. The targeted crossing statistic was the
+minimum of the pademelon and bettong count differences in their opposite
+observed directions. A network-wide statistic summed, over all station pairs
+with matched fully operational weeks, the smaller of the positive and
+negative species count-difference totals. The fixed set of 21 detected
+species defined both the observed and replicated ranking and switch
+statistics. Outages broke temporal adjacency.
+
+An exploratory follow-up separated temporal pattern from static station
+composition. We independently permuted observations across weeks within
+each species-by-station-by-exact-active-days stratum 1,999 times, preserving
+all stratum counts and unsampled cells. This conditions on spatial use and
+effort while testing calendar exchangeability. It cannot distinguish
+seasonality, animal persistence or time-varying observation effects.
+
 ### Evaluation principles
 
 Future model comparisons will retain equivalent information across
@@ -231,8 +270,46 @@ station structure against the shared-station baseline. They do not identify
 the ecological mechanism or constitute an independent confirmatory test.
 The full early station histories are retained in Fig. [4](#fig-history).
 
-Definitive richness-model comparisons and the external application remain
-outstanding.
+### Baseline predictive failures
+
+Both prior profiles met the frozen sampling criteria without numerical
+rescue: there were no divergences or maximum-depth hits, maximum R-hat was
+1.0042, and minimum bulk and tail effective sample sizes across both fits
+were 436 and 442. A draw-class indexing defect in the initial predictive
+postprocessing was identified from warnings, corrected and regression-tested.
+The following results use corrected simulations from the unchanged saved
+posterior draws; the original defective outputs remain archived.
+
+The baseline reproduced overall detection totals but failed spatial and
+temporal checks (Fig. [5](#fig-criticism)). There were 979 observed positive
+station-week cells, compared with a primary predictive median of 979 and a
+central 90% interval of 927–1,034. The network-wide station-ranking violation
+was 498, compared with predictive intervals of 118–207 and 117–211 under
+the primary and wider-tail priors. The selected pademelon–bettong crossing
+statistic was 18, compared with an interval of -9 to 1 under either prior.
+None of the 1,000 replicates per profile reached either observed spatial
+statistic. These finite simulation counts do not imply zero tail probability.
+
+Observed histories contained 786 switches between adjacent sampled weeks,
+compared with predictive intervals of 985–1,119 and 976–1,113. The conditional
+timing permutations, which preserved species-specific station counts and
+effort, gave a median of 923 switches and an interval of 894–952. None of
+1,999 permutations had as few switches as observed. The fourth 13-week block
+also retained excess detections under this conditional comparison: 371
+observed against an interval of 315–349. Thus static station composition
+does not fully explain the temporal pattern. The low-effort third block
+was consistent with both the corrected predictive and conditional timing
+distributions.
+
+Widening the among-species prior left these predictive failures largely
+unchanged. Mean latent richness shifted from 24.4 to 25.3, with central 90%
+intervals of 21–30 and 21–32. These are illustrative outputs of the criticised
+baseline, not validated estimates of local richness. The 29 all-zero
+candidates remain exchangeable under this hierarchy: it has no species-specific
+ecological information with which to distinguish the wombat from an undetected
+bird. Adequate overall detection counts therefore do not establish adequate
+inference for unseen members. Definitive richness-model comparisons and the
+external application remain outstanding.
 
 ## Discussion
 

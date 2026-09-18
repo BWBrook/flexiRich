@@ -12,6 +12,14 @@ also specifies the proposed layers of Huon Ridge assessment. `make test-goal009`
 and `make goal009-check` are local checks; empirical fits require deep-server
 and tmux. No later detection outcomes are read by the Goal009 runner.
 
+The [Goal009 decision](docs/goals/009-first-year-model-criticism/Decision.md)
+now reports clear spatial and temporal failures despite adequate overall
+detection counts. The original PPC output had an effort-indexing defect;
+corrected results are in `outputs/goal009/ppc-repaired-v2`. Complete original
+evidence and corrected-result recovery instructions are retained under
+`docs/goals/009-first-year-model-criticism/evidence/`. Neither baseline prior
+profile is an approved empirical richness estimate.
+
 [Goal008](docs/goals/008-ecological-information/Decision.md) checked
 same-species dependence and finite-pool calculations, first-year Judbury
 ecological diagnostics, and a coherent repeat-monitoring experiment proposal.

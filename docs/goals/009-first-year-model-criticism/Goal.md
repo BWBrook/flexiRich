@@ -1,6 +1,8 @@
 # Goal009 — first-year model criticism and a forecast contract
 
-State: implemented and remotely launched, 17 September 2026; see Launch.md.
+State: first-year criticism completed and interpreted, 18 September 2026;
+see [Decision.md](Decision.md). Original predictive postprocessing was defective;
+the committed repair and corrected outputs supersede it. The fits were preserved.
 
 Barry requested implementation following the Goal008 and Fable discussion.
 The integrated methods-and-application paper remains the destination. This
