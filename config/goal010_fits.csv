@@ -1,0 +1,9 @@
+fit_id,data_id,model_id,prior_id,interaction_scale,fit_seed,ppc_seed,ppc_draws
+control_zero_baseline,zero,baseline,primary,0,7300141,7300241,1000
+control_zero_spatial,zero,spatial,primary,0.5,7300151,7300251,1000
+control_cross_baseline,cross,baseline,primary,0,7300161,7300261,1000
+control_cross_spatial,cross,spatial,primary,0.5,7300171,7300271,1000
+spatial_primary,first_year,spatial,primary,0.5,7300101,7300201,1000
+spatial_wide_interaction,first_year,spatial,primary,1,7300111,7300211,1000
+spatial_wide_tail,first_year,spatial,tail_wide,0.5,7300121,7300221,1000
+spatial_both_wide,first_year,spatial,tail_wide,1,7300131,7300231,1000

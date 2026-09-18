@@ -175,6 +175,28 @@ goal009_read_development <- function(
        max_draws = as.integer(max_draws), seed = as.integer(seed))
 }
 
+.goal009_validate_interaction_draws <- function(interaction_draws, D, C, J) {
+  if (is.null(interaction_draws)) return(NULL)
+  valid <- is.array(interaction_draws) && is.numeric(interaction_draws) &&
+    length(dim(interaction_draws)) == 3L &&
+    identical(dim(interaction_draws), c(D, C, J)) &&
+    all(is.finite(interaction_draws))
+  if (valid) {
+    # Strip posterior array classes before any dimension-sensitive extraction.
+    interaction <- array(as.numeric(interaction_draws), dim = c(D, C, J))
+    interaction_matrix <- matrix(as.numeric(interaction), nrow = D * C, ncol = J)
+    row_totals <- rowSums(interaction_matrix)
+    valid <- all(abs(row_totals) <=
+      1e-10 * (1 + rowSums(abs(interaction_matrix))))
+  }
+  if (!valid) {
+    .goal009_stop(
+      "interaction_draws must be a finite, D x C x J array centered over stations."
+    )
+  }
+  interaction
+}
+
 .goal009_detection_probability <- function(log_hazard) {
   out <- numeric(length(log_hazard))
   low <- log_hazard < log(.Machine$double.xmin)
@@ -294,15 +316,19 @@ goal009_read_development <- function(
 #' Generate bounded posterior predictive criticism for the Goal003 candidate.
 goal009_ppc <- function(
   data, q_member_draws, alpha_draws, camera_effect_draws, labels, seed,
-  max_draws = 1000L
+  max_draws = 1000L, interaction_draws = NULL
 ) {
   spec <- .goal009_validate_draws(
     data, q_member_draws, alpha_draws, camera_effect_draws,
     labels, seed, max_draws
   )
+  interaction <- .goal009_validate_interaction_draws(
+    interaction_draws, spec$D, spec$C, spec$J
+  )
   C <- spec$C; J <- spec$J; T <- spec$T
   n_draws <- min(spec$D, spec$max_draws)
   draw_indices <- unique(as.integer(floor(seq(0, spec$D - 1L, length.out = n_draws))) + 1L)
+  if (!is.null(interaction)) interaction <- interaction[draw_indices, , , drop = FALSE]
   # posterior::draws_matrix keeps dimensions on row extraction when its S3
   # method is registered. as.matrix() retains that subclass. Strip it before
   # outer(): two 1-row matrices otherwise produce a four-dimensional array,
@@ -344,9 +370,13 @@ goal009_ppc <- function(
     membership <- stats::rbinom(C, 1L, q[d, ])
     membership[data$stan_data$detected_ever == 1L] <- 1L
     probability <- matrix(0, nrow = C, ncol = J * T)
+    log_hazard_base <- outer(alpha[d, ], camera[d, ], "+")
+    if (!is.null(interaction)) {
+      log_hazard_base <- log_hazard_base +
+        matrix(interaction[d, , , drop = FALSE], nrow = C, ncol = J)
+    }
     for (t in seq_len(T)) {
-      log_hazard <- outer(alpha[d, ], camera[d, ], "+")
-      log_hazard <- sweep(log_hazard, 2L, log(effort[, t]), "+")
+      log_hazard <- sweep(log_hazard_base, 2L, log(effort[, t]), "+")
       probability[, ((t - 1L) * J + 1L):(t * J)] <-
         .goal009_detection_probability(as.vector(log_hazard)) |>
         matrix(nrow = C, ncol = J)
@@ -460,7 +490,7 @@ goal009_ppc <- function(
       (effort[, seq_len(T - 1L) + 1L] > 0L) &
       matrix(rep(adjacent, each = J), nrow = J)
   ) else 0L
-  list(
+  result <- list(
     summary = summary,
     draw_statistics = draw_statistics,
     species_station = species_station,
@@ -487,6 +517,11 @@ goal009_ppc <- function(
       ranking_species_mask = "fixed observed detected-ever species for observed and replicated arrays"
     )
   )
+  if (!is.null(interaction)) {
+    result$metadata$interaction <-
+      "fixed draw-specific species-station interaction, centered over stations and reused across weeks"
+  }
+  result
 }
 
 #' Check that sequential membership updating agrees with the joint model.
