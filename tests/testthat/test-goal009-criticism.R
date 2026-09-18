@@ -88,6 +88,34 @@ testthat::test_that("shared membership is one draw across every operational cell
   testthat::expect_true(all(unlist(out$species_counts[unknown, "observed"]) == 0))
 })
 
+testthat::test_that("loaded posterior draw classes cannot change effort allocation", {
+  data <- .goal003_baseline_fixture()
+  labels <- tibble::tibble(
+    species_id = data$candidate_ids,
+    taxon_class = rep("Mammalia", length(data$candidate_ids)),
+    encounter_class = rep("routine", length(data$candidate_ids))
+  )
+  D <- 30L
+  C <- length(data$candidate_ids)
+  J <- length(data$camera_ids)
+  q <- matrix(0.4, D, C)
+  q[, data$stan_data$detected_ever == 1L] <- 1
+  alpha <- matrix(rep(seq(-5, -1, length.out = C), each = D), D, C)
+  camera <- matrix(rep(c(-0.7, 0.7), each = D), D, J)
+  # Loading posterior is essential: deserializing alone does not register [.
+  wrapped <- lapply(list(q, alpha, camera), posterior::as_draws_matrix)
+  testthat::expect_equal(dim(wrapped[[2]][1, ]), c(1L, C))
+  expected <- goal009_ppc(data, q, alpha, camera, labels, 904L, 20L)
+  testthat::expect_no_warning(actual <- goal009_ppc(
+    data, wrapped[[1]], wrapped[[2]], wrapped[[3]], labels, 904L, 20L
+  ))
+  testthat::expect_identical(actual, expected)
+  testthat::expect_identical(
+    .goal003_mean_poisson_binomial(wrapped[[1]]),
+    .goal003_mean_poisson_binomial(q)
+  )
+})
+
 testthat::test_that("Goal009 sequential bridge detects membership reinitialisation", {
   bridge <- goal009_sequential_bridge()
   testthat::expect_true(bridge$normalized_same_grid)

@@ -1,0 +1,26 @@
+Replayed primary 
+Replayed tail_wide 
+       Var1                                         Var2  Freq
+1   primary STATS does not recycle exactly across MARGIN 52000
+2 tail_wide STATS does not recycle exactly across MARGIN 52000
+     profile                          file exact within_tolerance
+1    primary boundary-mass-descriptive.csv  TRUE             TRUE
+2    primary         core-correlations.csv  TRUE             TRUE
+3    primary       latent-richness-pmf.csv  TRUE             TRUE
+4    primary  membership-probabilities.csv  TRUE             TRUE
+5    primary         parameter-summary.csv  TRUE             TRUE
+6    primary       ppc-draw-statistics.csv  TRUE             TRUE
+7    primary         ppc-species-block.csv  TRUE             TRUE
+8    primary        ppc-species-counts.csv  TRUE             TRUE
+9    primary       ppc-species-station.csv  TRUE             TRUE
+10   primary               ppc-summary.csv  TRUE             TRUE
+11 tail_wide boundary-mass-descriptive.csv  TRUE             TRUE
+12 tail_wide         core-correlations.csv  TRUE             TRUE
+13 tail_wide       latent-richness-pmf.csv  TRUE             TRUE
+14 tail_wide  membership-probabilities.csv  TRUE             TRUE
+15 tail_wide         parameter-summary.csv  TRUE             TRUE
+16 tail_wide       ppc-draw-statistics.csv  TRUE             TRUE
+17 tail_wide         ppc-species-block.csv  TRUE             TRUE
+18 tail_wide        ppc-species-counts.csv  TRUE             TRUE
+19 tail_wide       ppc-species-station.csv  TRUE             TRUE
+20 tail_wide               ppc-summary.csv  TRUE             TRUE

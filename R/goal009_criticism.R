@@ -303,9 +303,16 @@ goal009_ppc <- function(
   C <- spec$C; J <- spec$J; T <- spec$T
   n_draws <- min(spec$D, spec$max_draws)
   draw_indices <- unique(as.integer(floor(seq(0, spec$D - 1L, length.out = n_draws))) + 1L)
-  q <- q_member_draws[draw_indices, , drop = FALSE]
-  alpha <- alpha_draws[draw_indices, , drop = FALSE]
-  camera <- camera_effect_draws[draw_indices, , drop = FALSE]
+  # posterior::draws_matrix keeps dimensions on row extraction when its S3
+  # method is registered. as.matrix() retains that subclass. Strip it before
+  # outer(): two 1-row matrices otherwise produce a four-dimensional array,
+  # so sweep(..., 2, effort) applies station effort along the species axis.
+  q <- matrix(as.numeric(q_member_draws), nrow = spec$D, ncol = C)[
+    draw_indices, , drop = FALSE]
+  alpha <- matrix(as.numeric(alpha_draws), nrow = spec$D, ncol = C)[
+    draw_indices, , drop = FALSE]
+  camera <- matrix(as.numeric(camera_effect_draws), nrow = spec$D, ncol = J)[
+    draw_indices, , drop = FALSE]
   labels <- tibble::as_tibble(labels[
     match(data$candidate_ids, labels$species_id), , drop = FALSE
   ])
