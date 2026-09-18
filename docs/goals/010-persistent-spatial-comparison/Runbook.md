@@ -54,3 +54,22 @@ Spatial fits also retain camera/interaction decomposition correlations and
 descriptive interaction-SD boundary mass. Controls retain their exact truth.
 Global outputs contain the manifest, receipts, seed/runtime/source metadata,
 prior draws and mathematical checks. Do not add later detection scoring here.
+
+## Postprocessing after completion
+
+Copy the completed run into the local `outputs/goal010/spatial-v1` directory,
+checking source metadata and transferred file hashes. With the preserved Goal009
+original fit summaries and **corrected** PPC outputs restored locally, run:
+
+```bash
+Rscript scripts/summarize_goal010.R
+```
+
+This separately maintained summary script writes combined PPC, latent-richness,
+core-hyperparameter and sampler-diagnostic tables plus a four-panel comparison
+figure to `outputs/goal010/synthesis-v1`. It refuses an incomplete/nonclean batch
+or an existing synthesis destination. Its synthetic schema smoke is software
+verification only; real comparison figures and conclusions require completed
+empirical outputs. Review the paired control tables and prior-predictive draws
+alongside those figures. Preserve and investigate nonclean fits before deciding
+whether a separately committed computational amendment is justified.
