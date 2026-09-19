@@ -157,7 +157,7 @@ retaining one membership state and one persistent log encounter rate per
 species, and sum-to-zero shared station effects. Species log rates followed
 a normal hierarchy. Both prior profiles used $\omega\sim\mathrm{Beta}(1,1)$,
 $\mu_\alpha\sim\mathrm{Normal}(\log(0.02),1.5^2)$ and a half-normal prior
-with scale 0.75 for the station-effect standard deviation. The half-normal
+with scale 0.75 for the station-contrast standard deviation. The half-normal
 scale for the among-species standard deviation was 1 in the primary profile
 and 1.5 in the wider-tail sensitivity. These inherited priors were not
 externally calibrated. Taxon and routine/occasional labels were used for

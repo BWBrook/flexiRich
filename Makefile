@@ -28,3 +28,11 @@ goal010-check:
 
 $(THEORY_COVERAGE_PNG): outputs/goal008/theory-v2/gaussian-dependence-coverage.pdf
 	pdftoppm -singlefile -png -r 160 "$<" "$(basename $@)"
+
+.PHONY: test-goal011 goal011-check
+
+test-goal011:
+	Rscript -e 'testthat::test_dir("tests/testthat", filter = "goal011", reporter = "summary", stop_on_failure = TRUE, stop_on_warning = TRUE)'
+
+goal011-check:
+	Rscript scripts/run_goal011_forecasts.R check

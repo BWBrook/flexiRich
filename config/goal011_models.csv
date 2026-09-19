@@ -1,0 +1,7 @@
+model_id,role,fit_id,draw_path,path_seed
+baseline_primary,main,primary,outputs/goal009/first-year-v1/primary/prediction-draws.rds,7400101
+spatial_primary,main,spatial_primary,outputs/goal010/spatial-v1/spatial_primary/prediction-draws.rds,7400111
+baseline_wide,sensitivity,tail_wide,outputs/goal009/first-year-v1/tail_wide/prediction-draws.rds,7400121
+spatial_wide_interaction,sensitivity,spatial_wide_interaction,outputs/goal010/spatial-v1/spatial_wide_interaction/prediction-draws.rds,7400131
+spatial_wide_tail,sensitivity,spatial_wide_tail,outputs/goal010/spatial-v1/spatial_wide_tail/prediction-draws.rds,7400141
+spatial_both_wide,sensitivity,spatial_both_wide,outputs/goal010/spatial-v1/spatial_both_wide/prediction-draws.rds,7400151
