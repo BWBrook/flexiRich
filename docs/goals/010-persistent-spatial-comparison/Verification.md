@@ -55,3 +55,19 @@ an eight-directory synthetic schema smoke including legitimately unavailable
 control statistics (all NA). Expected CSVs and PNG/PDF figures were generated
 without script warnings. This smoke is not a scientific result; real-output
 synthesis remains pending. The postprocessor does not alter the frozen fit run.
+
+## Completed run, 19 September 2026
+
+Exit marker is 0; all eight fits are terminal-clean (five primary, three rescue).
+All 197 remote files were copied and matched byte-for-byte by SHA-256. The
+original run is unchanged. Both the actual-result synthesis and the supplemental
+summary audit completed without warnings. The comparison figure was visually
+inspected; the both-wide mean-rate trace/rank plot was also inspected alongside
+all saved numerical diagnostics. The manuscript includes the spatial comparison
+and was rebuilt through the local makedoc toolchain.
+
+The three rescues followed the frozen ESS/R-hat policy; all 11 attempts had zero
+divergences, zero depth hits and no captured warnings. See audit-v1/rows.csv for
+all attempts and InterpretationAudit.md for the independent scientific review.
+Detailed results and the approved next step are in Decision.md. No later
+Judbury detection or Huon Ridge file was opened during this interpretation.

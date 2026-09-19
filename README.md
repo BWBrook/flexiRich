@@ -1,8 +1,9 @@
 # flexiRich
 
-[Goal010](docs/goals/010-persistent-spatial-comparison/Goal.md) is the current
-development step: a persistent species-by-station comparison using only the
-first Judbury year. See its [design](docs/goals/010-persistent-spatial-comparison/Design.md)
+[Goal010](docs/goals/010-persistent-spatial-comparison/Goal.md) completed the persistent species-by-station comparison using only the
+first Judbury year. Its [decision](docs/goals/010-persistent-spatial-comparison/Decision.md)
+reports repaired spatial discrepancies, remaining temporal failures and almost
+unchanged model-dependent richness. See its [design](docs/goals/010-persistent-spatial-comparison/Design.md)
 and [runbook](docs/goals/010-persistent-spatial-comparison/Runbook.md).
 
 Research implementation and validation of an effort-aware estimator of

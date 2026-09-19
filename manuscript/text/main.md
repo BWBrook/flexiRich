@@ -1,9 +1,9 @@
 # What camera grids can tell us about community richness
 
-**Working methods-and-application manuscript, 18 September 2026.** This is an
+**Working methods-and-application manuscript, 19 September 2026.** This is an
 incomplete research draft. Theoretical diagnostics and early empirical
-description support development; a revised estimator, prospective comparison
-and external validation have not yet been completed. Authorship and journal
+description and the first spatial-model comparison support development;
+held-out forecasting and external validation have not yet been completed. Authorship and journal
 selection remain open.
 
 ## Abstract
@@ -189,6 +189,35 @@ all stratum counts and unsampled cells. This conditions on spatial use and
 effort while testing calendar exchangeability. It cannot distinguish
 seasonality, animal persistence or time-varying observation effects.
 
+### Persistent species-by-station comparison (Goal010)
+
+To test whether the shared station ordering was too restrictive, we added a
+persistent species-by-station interaction to the first-year model. For
+candidate $i$, station $j$ and occasion $k$, the log hazard was
+
+$$
+\log h_{ijk}=\log E_{jk}+\alpha_i+b_j+u_{ij}.
+$$
+
+The row-centred $u_i$ terms sum to zero across the nine stations and were
+parameterised so their marginal station standard deviation is $\tau$; the
+inherited camera-effect parameter $\sigma_{camera}$ remains a contrast
+coefficient standard deviation. Candidate identities, membership, effort,
+station effects and species-specific station effects persisted through the
+52-week window. This fixed-array extension tests spatial-pattern flexibility;
+it does not specify seasonal availability or a transferable random field.
+Proper priors regularise the shared/species-specific station decomposition;
+the likelihood does not identify those components uniquely.
+
+Four empirical fits crossed $\tau\sim\mathrm{HalfNormal}(0,0.5)$ or
+$\mathrm{HalfNormal}(0,1)$ with the inherited among-species rate scale
+$\sigma_\alpha\sim\mathrm{HalfNormal}(0,1)$ or
+$\mathrm{HalfNormal}(0,1.5)$. We also fitted the baseline and spatial models to
+two fixed synthetic mechanisms: no species-specific station interaction, and
+opposing $+1.5/-1.5$ log-rate offsets for two species at two stations. These
+paired controls checked implementation and mechanism response; they were not
+coverage or average-accuracy experiments.
+
 ### Evaluation principles
 
 Future model comparisons will retain equivalent information across
@@ -310,6 +339,33 @@ ecological information with which to distinguish the wombat from an undetected
 bird. Adequate overall detection counts therefore do not establish adequate
 inference for unseen members. Definitive richness-model comparisons and the
 external application remain outstanding.
+
+### Persistent species-by-station comparison
+
+All eight frozen fits were terminal-clean. Three empirical fits required the
+prespecified rescue attempt for effective sample size or R-hat; no attempt had
+divergences or maximum-depth hits. The primary spatial model brought the
+observed global common-ranking violation of 498 inside its central 90%
+predictive interval (413–616), compared with 118–207 under the corrected
+shared-station baseline. The selected pademelon–bettong crossing of 18 was
+similarly inside the spatial interval (9–22), whereas the baseline interval
+was −9–1 (Fig. [6](#fig-goal010)).
+
+The spatial extension did not repair the temporal discrepancies. Observed
+adjacent-week switches were 786, compared with 860–984 under the primary
+spatial model; the observed fourth-block count of 371 was compared with
+309–357. These remaining failures are consistent with the design warning that
+static species-specific station effects cannot represent calendar dependence.
+They do not establish seasonality or a causal mechanism.
+
+The primary latent richness mean was 24.57 with a central 90% interval of
+21–30, close to the baseline mean of 24.39 with the same interval. Widening
+the interaction prior changed the mean little (24.58); widening the inherited
+rate tail gave means of 25.51 and 25.53, each with an interval of 21–32.
+These shifts are outputs of a development comparison, not evidence that
+unchanged interval endpoints validate richness inference. The all-zero
+candidates remain exchangeable, future forecasts were not run, and later
+observations remain protected.
 
 ## Discussion
 
