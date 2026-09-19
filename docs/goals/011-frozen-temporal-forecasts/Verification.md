@@ -34,3 +34,26 @@ predictive objects, not merely passing software checks.
 
 Independent auditor verdict: GO to freeze and generate. Separate probability
 and count-mixture checks agree to approximately 2.22e-16 or better. See Audit.md.
+
+## Remote launch receipt
+
+Source and contracts frozen at
+`033c21ac13bb830d34e31d40698e5f6a0b4dda6d`. A fresh detached checkout at
+`/data/codex/repos/flexirich-goal011-20260919` received that commit by Git bundle,
+the committed restricted Goal008 inputs, and unchanged hash-listed parent fit
+artifacts copied from the preserved Goal009/010 runs. Its working tree was clean.
+All six input checks and two-draw integration smokes passed remotely; renv
+reported a consistent project before the full calculation began.
+
+The run started at **2026-09-19 05:24:34 UTC**, in tmux session
+`flexirich-g011-forecast-v1`. Startup was verified through the live R process,
+log, run metadata, and `RUNNING: baseline_primary` status. Output is
+`outputs/goal011/forecast-v1/`, with adjacent `.log` and `.exitcode` files. The
+recorded run commit matches the freeze above. Monitoring is handed back after
+successful startup, as required by the repository compute policy; completion
+and full-output verification are not claimed here. Exact WSL/macOS commands
+are in Runbook.md.
+
+Later Judbury detections and Huon Ridge remain unopened. Independent clearance
+of the actual archived, committed predictive objects is still required before
+outcome access.
