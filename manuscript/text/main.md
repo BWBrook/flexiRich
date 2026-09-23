@@ -218,6 +218,55 @@ opposing $+1.5/-1.5$ log-rate offsets for two species at two stations. These
 paired controls checked implementation and mechanism response; they were not
 coverage or average-accuracy experiments.
 
+### Frozen temporal encounter forecasts
+
+We compared the primary shared-station and spatial models using fixed-origin
+forecasts for occasions 53–153, after fitting only occasions 1–52. The other
+four prior profiles were retained as sensitivity analyses. Predictions,
+scoring rules and complete predictive objects were frozen and independently
+checked before accessing the later outcomes. Known historical exposure to
+three later records and aggregate summaries precludes describing this as
+wholly blind validation. In particular, the historical full-period total of
+26 detected species, combined with the first-year total of 21, already revealed
+the final count of five additions. The focal count comparison is consequently
+a retrospective predictive check of a disclosed aggregate. All models used
+the same reviewed realised effort:
+5,303 active station-days over the following 101 weeks. These are retrospective
+forecasts conditional on that effort, rather than operational forecasts of an
+unknown future deployment.
+
+For posterior draw $d$, candidate $i$ and future horizon $h$, the probability
+of at least one future detection was
+
+$$
+p_{id}(h)=q_{id}\left[1-\exp\left\{-\sum_j
+E_j(h)\exp(\alpha_{id}+b_{jd}+u_{ijd})\right\}\right],
+$$
+
+where $q_{id}$ is the membership probability conditional on the first year,
+$E_j(h)$ is cumulative future effort, and $u_{ijd}=0$ in the shared-station
+model. Membership probabilities were one for the 21 previously detected
+candidates. We preserved joint posterior draws and the same species and
+station effects through nested horizons of 13, 26, 52 and 101 weeks. Conditional
+Poisson-binomial count probabilities were averaged over all retained draws;
+count distributions were not constructed from marginal mean probabilities.
+Named marginal predictions were pooled across the 29 exchangeable unseen
+candidates, while their heterogeneous probabilities within each posterior
+draw were retained for the count mixture.
+
+We scored first discoveries among those 29 candidates separately from
+redetection of the 21 known members. The focal contrast was spatial minus
+shared-station negative log predictive probability of the additional-discovery
+count at 101 weeks. Species-level Brier and logarithmic scores, all shorter
+horizons, total future-detected counts and every prior sensitivity were also
+retained. Taxon and encounter-class discovery distributions were obtained by
+hypergeometric splitting under exchangeability; they contain no independently
+estimated taxon-specific detection information. Scores used saved log
+probabilities without truncating small probabilities. Central 90% predictive
+intervals were pointwise summaries, and the nested horizons were not treated
+as independent replications. Successful prediction of further discoveries
+would still not establish the true richness of the candidate pool.
+
 ### Evaluation principles
 
 Future model comparisons will retain equivalent information across

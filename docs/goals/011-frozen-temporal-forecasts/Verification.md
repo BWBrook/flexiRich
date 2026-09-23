@@ -72,3 +72,40 @@ prediction archive, including all six RDS objects and the log/exit files, is
 preserved under `evidence/` with its SHA-256 and restore instructions. These
 are generation and transfer checks; the independent all-draw audit is recorded
 in PredictionAudit.md before any outcome access.
+
+## Outcome adapter checks before access
+
+The new adapter restricts observation and operation rows to occasions 1–153
+before event construction and identity mapping. It retains the established
+15-minute gap rule and assigns each event to its start time in fixed UTC+10.
+Events are constructed once over this bounded period, then future outcomes
+are selected from occasions 53–153; the observation process is not reset at
+the forecast boundary. Non-candidate taxa remain excluded under the original
+reviewed pool and are reported in an explicit diagnostic table.
+
+All 88 Goal011 test expectations passed with warnings treated as errors,
+including the new raw-adapter and pure-outcome tests. A synthetic integration
+using the pinned external protocol code passed events crossing occasions
+52/53 and 65/66 and an event exactly at the start of occasion 153. The latter
+test protects a final-breakpoint indexing error found and repaired during
+self-review before real outcome access. No real observations entered these
+checks.
+
+The assessment runner will require the committed prediction archive and audit
+clearance, verify consumed input receipts, preserve the frozen scoring function
+byte-for-byte, and write a dated access receipt before reading observations.
+It will require exact agreement with all 23,400 first-year incidence cells,
+the full and future effort tables, the forecast calendar and the known-member
+flags; a separate event aggregation must agree with every weekly-table outcome.
+Failure stops assessment. These empirical bridge checks remain unrun until
+the documented outcome-access gate is satisfied.
+
+The historical aggregate exposure is specifically relevant to the focal
+endpoint: `R/goal003_judbury.R` already records 26 detected species for the full
+153 occasions. Together with the first-year total of 21 this implies five
+later additions. This was recoverable from existing code before the current
+outcome extraction. The frozen final-count comparison is therefore a
+retrospective predictive check of an already disclosed aggregate, not a newly
+unseen confirmatory endpoint. The endpoint, models and scoring rules remain
+unchanged; timing and named outcomes will be reported with the same broader
+historical-exposure caveat. Huon Ridge remains protected.

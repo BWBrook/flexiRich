@@ -31,3 +31,14 @@ tar --keep-old-files -xzf docs/goals/011-frozen-temporal-forecasts/evidence/goal
 These complete predictive objects suffice for scoring without refitting or
 regenerating forecasts. Recreating the parent posterior draws still requires
 the separately preserved Goal009/010 run artifacts or new fitting runs.
+
+`goal011-prediction-audit.tar.gz` preserves the independent all-draw audit
+tables, numerical-precision diagnostics and clearance status under
+`outputs/goal011/prediction-audit-v1/`. SHA-256:
+
+```
+f1863673ee5c10b0d687a8055a293a8453658b708d96faec44ec1c9153522b76
+```
+
+It was also created before outcome access. Restore with the same
+`tar --keep-old-files -xzf` command, substituting this archive path.
