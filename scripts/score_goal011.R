@@ -7,7 +7,7 @@ options(error = function() {
 })
 for (p in sort(list.files("R", pattern = "[.]R$", full.names = TRUE))) source(p)
 args <- commandArgs(trailingOnly = TRUE)
-out <- if (length(args)) args[1L] else "outputs/goal011/assessment-v1"
+out <- if (length(args)) args[1L] else "outputs/goal011/assessment-v2"
 stopifnot(length(args) <= 1L)
 root <- normalizePath(".")
 base <- "outputs/goal011/forecast-v1"
@@ -38,7 +38,7 @@ dev <- goal009_read_development()
 # Preserve the scoring function byte-for-byte from the prediction freeze.
 frozen_scorer <- system2("git", c("show", "033c21a:R/goal011_scoring.R"), stdout = TRUE)
 stopifnot(identical(readLines("R/goal011_scoring.R"), frozen_scorer))
-dest <- .goal003_prepare_output_directory(out, "goal011_assessment")
+dest <- .goal003_prepare_output_directory(out, "goal011")
 writeLines(c(
   paste0("outcome_access_started_utc=", format(Sys.time(), tz = "UTC", usetz = TRUE)),
   paste0("scoring_git_commit=", system2("git", c("rev-parse", "HEAD"), stdout = TRUE)),

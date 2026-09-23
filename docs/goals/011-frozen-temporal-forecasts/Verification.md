@@ -109,3 +109,11 @@ retrospective predictive check of an already disclosed aggregate, not a newly
 unseen confirmatory endpoint. The endpoint, models and scoring rules remain
 unchanged; timing and named outcomes will be reported with the same broader
 historical-exposure caveat. Huon Ridge remains protected.
+
+The first assessment invocation at commit `748e57b` stopped before creating an
+output directory or access receipt: the runner supplied an invalid namespace
+to the existing output-directory guard. No observation data were read. Its
+`outputs/goal011/assessment-v1.log` is preserved. The repair uses the existing
+`goal011` namespace and a new assessment identity `assessment-v2`; forecasts,
+scoring function, periods and scientific rules are unchanged. The repair was
+committed before retrying.
