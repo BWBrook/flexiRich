@@ -1,8 +1,15 @@
 # Goal011 forecast generation and handoff
 
-This run generates predictions only. It does not read later observations or
-score the models. The actual predictive objects must be verified, archived and
-committed, with independent audit clearance, before outcome access.
+Status, 23 September 2026: generation, independent audit and bounded Judbury
+assessment are complete. See Decision.md, PredictionAudit.md and Verification.md.
+The remote generation run below remains unchanged and unscored; local scores
+live separately in `outputs/goal011/assessment-v3/`, and the final figure/tables
+in `outputs/goal011/synthesis-v2/`. Huon Ridge remains unopened.
+
+The generation command reads no later detections. Its actual predictive objects
+were verified, archived and committed, with independent audit clearance, before
+the later bounded assessment. Do not relaunch the completed remote command into
+its existing output directory.
 
 Local checks:
 
@@ -49,3 +56,36 @@ PMFs, logical bounds, exact unseen-label symmetry, nesting and endpoint counts;
 archive and commit the predictions. The scoring function uses synthetic tests
 until the independently reviewed outcome-access gate is satisfied. If execution
 fails, preserve the failed run and make any repair a new committed run identity.
+
+## Completed local assessment and reproduction
+
+The original remote job ended with exit 0; its tmux session need not still
+exist. The status/log/exit commands above work identically from WSL and macOS.
+The full prediction, audit and assessment archives are under `evidence/`, with
+their SHA-256 values and restore instructions. Restore into a fresh checkout
+without overwriting existing outputs. No protected Huon Ridge data are needed.
+
+With restored forecasts and assessment tables, regenerate the figure and all
+comparison tables into a new directory:
+
+```bash
+Rscript scripts/summarise_goal011_assessment.R outputs/goal011/assessment-v3 outputs/goal011/forecast-v1 outputs/goal011/synthesis-replay
+```
+
+The manuscript figure points to the preserved final `synthesis-v2` artifact.
+Its data and scores are unchanged from v1; only vertical scaling and labels
+were improved, and a named-species first-year context table was added.
+
+Raw extraction can be replayed, after the committed audit and hashes pass, with
+the unchanged external source files available and a clean checkout:
+
+```bash
+Rscript scripts/check_goal011_outcome_protocol.R
+Rscript scripts/score_goal011.R outputs/goal011/assessment-replay
+```
+
+This records another access receipt and never overwrites the preserved v2
+failure or successful v3 assessment. The original first-access time remains
+2026-09-23 01:38:27 UTC. This is bounded deterministic data processing and
+scoring, not a new MCMC batch; it ran locally. Any future empirical fitting
+still belongs on deep-server under a new committed run contract and tmux session.

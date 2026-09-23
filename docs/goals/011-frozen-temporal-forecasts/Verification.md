@@ -127,3 +127,32 @@ access receipt and log are preserved. The repair constructs the established
 `occ_%03d` key from the frozen integer index, and was frozen for a new
 `assessment-v3` run. It changes no effort value, outcome rule, prediction or
 score. The first-access time remains that of v2, irrespective of retry success.
+
+## Completed assessment and synthesis
+
+`assessment-v3` completed at commit `9fcb4f5`. All 23,400 first-year incidence
+cells match, all full-period and future effort values match, the calendar
+matches, all 21/29 membership flags agree, and every candidate-horizon outcome
+agrees between independent event and weekly-table aggregations. All output
+hashes verify. All six unchanged predictive objects were scored; no fitting,
+prior selection or outcome-dependent candidate exclusion occurred.
+
+An independent scientific reader reproduced the final expected counts and the
+focal score from saved PMFs, checked all profile/horizon count summaries, and
+agreed that opposing discovery/redetection errors can conceal temporal failure
+in the total. Species identities were checked against the reviewed candidate
+pool, including *Perameles gunnii*, the eastern barred bandicoot.
+
+The first synthesis figure used unnecessarily shared vertical limits; a focused
+visual review produced `synthesis-v2` with separate row scales and unclipped
+zero counts. Numerical forecasts and scores are unchanged. Its named-species
+context table uses only frozen first-year incidence and the completed scores.
+The manuscript includes methods, results, limitations and Figure 7, built with
+the local makedoc tooling. Build/lint/reference checks passed; this remains an
+incomplete research manuscript rather than a submission-ready paper.
+
+The final PDF has 16 pages, passes qpdf structural checks, and its Figure 7
+page was visually inspected with the complete figure and caption fitting on
+the page. All six models' three score-table types replay from stored outcomes
+and predictions to 1e-12 without raw-observation access. The final assessment
+archive contains 36 files, each verified against its source bytes.

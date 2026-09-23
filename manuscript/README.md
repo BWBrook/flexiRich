@@ -27,6 +27,14 @@ preserved posterior summaries and the conditional timing diagnostic; see
 `docs/goals/009-first-year-model-criticism/evidence/README.md` for recovery.
 Building the manuscript never opens empirical data.
 
+The Goal010 spatial comparison figure is produced by
+`Rscript scripts/summarize_goal010.R`. The completed Goal011 temporal-assessment
+figure is produced by `Rscript scripts/summarise_goal011_assessment.R` from
+already frozen forecasts and scored outcome tables. Their evidence archives
+and restore instructions live under the corresponding `docs/goals/` folders.
+Goal011 has been scored; subsequent model development cannot reuse that same
+benchmark as independent validation.
+
 The CSL file is an unchanged copy of the locally bundled Pandoc default style
 (`/usr/share/pandoc/data/default.csl`); its embedded attribution and licence
 are retained. This is draft typography, not a venue decision. The bibliography

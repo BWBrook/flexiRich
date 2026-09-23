@@ -42,3 +42,24 @@ f1863673ee5c10b0d687a8055a293a8453658b708d96faec44ec1c9153522b76
 
 It was also created before outcome access. Restore with the same
 `tar --keep-old-files -xzf` command, substituting this archive path.
+
+`goal011-assessment-results.tar.gz` preserves 36 files (733,699 archive bytes):
+the two failed integration attempts and access receipts, the successful v3
+assessment with every species/group/count score and bounded future incidence,
+the initial and final synthesis figures/tables, and their logs. SHA-256:
+
+```
+9b203574c9333a6446703a207f182890ee39c1a7a9d1b481c099b80016165a75
+```
+
+Every archived file was checked against its local source bytes. The successful
+assessment's own output hashes also match. The final results are under
+`outputs/goal011/assessment-v3/` and `outputs/goal011/synthesis-v2/` after restore.
+These results were produced after the committed independent access clearance;
+they must not be conflated with the earlier, unscored prediction archive.
+
+All six profiles and all three score-table types were replayed from the saved
+200-row outcome table and frozen forecasts, agreeing with the assessment to
+1e-12 tolerance without raw-observation access. The prediction and assessment
+archives therefore suffice for score replay and figure reproduction. Exact
+outcome extraction additionally requires the hash-pinned camtrap-workflow files.

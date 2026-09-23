@@ -1,10 +1,10 @@
 # What camera grids can tell us about community richness
 
-**Working methods-and-application manuscript, 19 September 2026.** This is an
-incomplete research draft. Theoretical diagnostics and early empirical
-description and the first spatial-model comparison support development;
-held-out forecasting and external validation have not yet been completed. Authorship and journal
-selection remain open.
+**Working methods-and-application manuscript, 23 September 2026.** This is an
+incomplete research draft. Theoretical diagnostics, empirical model criticism,
+the spatial-model comparison and a frozen retrospective forecast assessment
+support development. Temporal-model repair and external validation remain
+outstanding. Authorship and journal selection remain open.
 
 ## Abstract
 
@@ -264,7 +264,11 @@ hypergeometric splitting under exchangeability; they contain no independently
 estimated taxon-specific detection information. Scores used saved log
 probabilities without truncating small probabilities. Central 90% predictive
 intervals were pointwise summaries, and the nested horizons were not treated
-as independent replications. Successful prediction of further discoveries
+as independent replications. We estimated MCMC integration error from the
+draw-specific discovery-count probabilities, preserving the four chain blocks,
+then used the delta method for log probabilities and added the independent
+primary-run variances for their contrast. This numerical uncertainty is
+distinct from ecological sampling uncertainty. Successful prediction of further discoveries
 would still not establish the true richness of the candidate pool.
 
 ### Evaluation principles
@@ -413,10 +417,72 @@ the interaction prior changed the mean little (24.58); widening the inherited
 rate tail gave means of 25.51 and 25.53, each with an interval of 21–32.
 These shifts are outputs of a development comparison, not evidence that
 unchanged interval endpoints validate richness inference. The all-zero
-candidates remain exchangeable, future forecasts were not run, and later
-observations remain protected.
+candidates remain exchangeable. We next assessed the fixed-origin encounter
+forecasts without changing either model.
+
+### Frozen temporal encounter assessment
+
+The observed additional-discovery counts were 0, 0, 3 and 5 at 13, 26, 52 and
+101 future weeks. Both primary models gave central 90% intervals of 0–1, 0–2,
+0–4 and 0–5, respectively (Fig. [7](#fig-goal011)). At the final horizon, mean
+predicted additions were 1.896 under the shared-station model and 1.935 under
+the spatial model. The negative log predictive probabilities of the observed
+count were 3.188605 and 3.164077. Their focal spatial-minus-shared contrast,
+−0.02453, was smaller than its approximate MCMC integration standard error
+of 0.06488. This difference does not establish a spatial-model advantage.
+The final count was historically disclosed, and containment at all four nested
+horizons is not an independent coverage experiment.
+
+Both models predicted too many redetections of previously recorded species.
+The observed counts were 12, 14, 16 and 18; their primary central 90% intervals
+were 13–17, 15–20, 17–21 and 19–21. All six prior profiles put the observations
+below their intervals at the first three horizons. The two spatial profiles
+with wider rate tails included the final count at their lower endpoint of 18;
+the remaining profiles had lower endpoints of 19. Wider rate tails also raised
+mean predicted additions to 2.159–2.190 and reduced their final count loss to
+2.912–2.948. We retained these as sensitivities and did not select a profile
+using the later data.
+
+The five additions were *Tribonyx mortierii*, *Phaps elegans* and
+*Malurus cyaneus* in January 2021, *Turdus merula* in September 2021, and
+*Vombatus ursinus* on 26 February 2022. All belonged to the reviewed routine
+class. The late wombat record establishes its membership during the full
+reference period; it does not identify its arrival time. Three known species
+were never redetected: *Perameles gunnii*, *Dasyurus maculatus* and
+*Canis familiaris*. Their first-year evidence comprised only two, one and one
+positive station-weeks, respectively, each at a single station. The primary
+spatial probabilities of later redetection were nevertheless 0.952, 0.854 and
+0.835. These sparse histories and later non-detections do not establish local
+extinction or a unique temporal mechanism.
+
+At the final horizon, 18 redetections plus five additions gave 23 future-detected
+species, within both primary total-count intervals of 20–25. Their expected
+components were approximately 20 returning species and two additions. The
+apparently reasonable total therefore concealed opposing component errors.
+Mean redetection Brier scores changed only from 0.11699 to 0.11423 between the
+primary baseline and spatial models; mean logarithmic losses changed from
+0.36059 to 0.34570. Spatial improvement in first-year fit did not resolve the
+failure of temporal encounter prediction.
 
 ## Discussion
+
+The forecast comparison separates two problems that a total accumulation curve
+can conceal. A model may be too optimistic about encountering previously
+recorded species and too pessimistic about additional discoveries, yet predict
+a plausible total. Retaining named histories and separating those components
+made the failure visible. The spatial extension remains useful for representing
+station-specific encounters, but its fitted spatial adequacy supplied little
+new information about the unseen candidates or their later detection.
+
+The temporal discrepancy motivates further development without identifying its
+ecological cause. Temporary site use, temporal dependence, changes in camera
+performance and uncertainty about sparse-species encounter rates remain
+plausible explanations. Choosing among them requires field context and
+mechanism-specific checks. Any development using these later Judbury outcomes
+must be labelled accordingly and assessed on different evidence. The unchanged
+discovery-score comparison, the uncertainty in its posterior integration and
+the prior exposure of its final count prevent a claim of confirmed predictive
+superiority. True community richness remains unobserved.
 
 The proposed interpretation will distinguish limited observation of named
 species from limited information about a wider encounter-rate distribution.

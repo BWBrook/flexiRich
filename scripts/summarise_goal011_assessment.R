@@ -1,8 +1,9 @@
 #!/usr/bin/env Rscript
 # Summarise frozen Goal011 predictive objects and completed assessment tables.
 #
-# This postprocessor reads only forecast artifacts and score tables.  It never
-# reads raw observations or reconstructs outcomes.  The default synthesis path
+# This postprocessor reads forecasts, score tables and frozen first-year
+# incidence for species context. It never reads raw observations or reconstructs
+# the forecast outcomes. The default synthesis path
 # is write-once so that a reviewed summary cannot be silently replaced.
 
 options(warn = 2)
@@ -228,15 +229,15 @@ build_plot <- function(summary, paths, observed, out_dir) {
       ggplot2::aes(y = observed_count), colour = "#D55E00", shape = 4,
       stroke = 1.1, size = 3
     ) +
-    ggplot2::facet_grid(event_type ~ model) +
+    ggplot2::facet_grid(event_type ~ model, scales = "free_y") +
     ggplot2::scale_x_continuous(breaks = sort(unique(main$horizon))) +
-    ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(0, .08))) +
+    ggplot2::scale_y_continuous(expand = ggplot2::expansion(mult = c(.06, .08))) +
     ggplot2::labs(
       x = "Cumulative future weeks",
       y = "Detected candidates",
-      title = "Goal011 cumulative detection forecasts",
-      subtitle = "Blue line: PMF mean; diamonds: PMF median; orange crosses: observed count",
-      caption = "Vertical ranges are pointwise central 90% PMF intervals. Grey lines are 20 evenly selected coherent joint paths.") +
+      title = "Future detections of new and previously recorded species",
+      subtitle = "Blue line: predicted mean; diamonds: predicted median; orange crosses: observed count",
+      caption = "Vertical ranges are pointwise central 90% predictive intervals. Grey lines show 20 joint predictive paths.") +
     ggplot2::theme_minimal(base_size = 12) +
     ggplot2::theme(
       panel.grid.minor = ggplot2::element_blank(),
@@ -253,7 +254,7 @@ build_plot <- function(summary, paths, observed, out_dir) {
 main <- function(
   assessment_dir = "outputs/goal011/assessment-v3",
   forecast_dir = "outputs/goal011/forecast-v1",
-  out_dir = "outputs/goal011/synthesis-v1"
+  out_dir = "outputs/goal011/synthesis-v2"
 ) {
   if (file.exists(out_dir) || dir.exists(out_dir)) {
     fail("Refusing to overwrite existing synthesis path: ", out_dir)
@@ -384,13 +385,24 @@ main <- function(
   utils::write.csv(count_comparison, file.path(out_dir, "count-comparison.csv"), row.names = FALSE)
   utils::write.csv(aggregate_scores, file.path(out_dir, "aggregate-species-scores.csv"), row.names = FALSE)
   utils::write.csv(focal_out, file.path(out_dir, "focal-contrast.csv"), row.names = FALSE)
+  firstyear_path <- "outputs/goal008/development-v1/detections_weekly.csv"
+  firstyear <- read_csv_checked(firstyear_path, "frozen first-year incidence")
+  missing_known <- species_scores[species_scores$horizon == 101L &
+    species_scores$known_member == 1L & species_scores$observed_future_detection == 0L,
+    c("model_id", "role", "species_id", "predicted_probability", "negative_log_score")]
+  missing_known$firstyear_positive_stationweeks <- vapply(missing_known$species_id, function(id)
+    sum(firstyear$species_id == id & firstyear$detected == 1L, na.rm = TRUE), integer(1))
+  missing_known$firstyear_positive_weeks <- vapply(missing_known$species_id, function(id)
+    paste(sort(unique(firstyear$occasion_id[firstyear$species_id == id &
+      !is.na(firstyear$detected) & firstyear$detected == 1L])), collapse = ";"), character(1))
+  utils::write.csv(missing_known, file.path(out_dir, "known-not-redetected.csv"), row.names = FALSE)
   input_paths <- c(file.path(forecast_dir, "model-manifest.csv"),
                    file.path(forecast_dir, "model-status.csv"),
                    file.path(forecast_dir, "horizons.csv"), receipts,
                    file.path(assessment_dir, "count-scores.csv"),
                    file.path(assessment_dir, "aggregate-species-scores.csv"),
                    file.path(assessment_dir, "species-scores.csv"),
-                   file.path(assessment_dir, "first-discoveries.csv"))
+                   file.path(assessment_dir, "first-discoveries.csv"), firstyear_path)
   input_paths <- input_paths[file.exists(input_paths)]
   utils::write.csv(data.frame(
     path = input_paths,
@@ -413,5 +425,5 @@ if (length(args) > 3L) {
 }
 assessment_dir <- if (length(args) >= 1L) args[[1L]] else "outputs/goal011/assessment-v3"
 forecast_dir <- if (length(args) >= 2L) args[[2L]] else "outputs/goal011/forecast-v1"
-out_dir <- if (length(args) >= 3L) args[[3L]] else "outputs/goal011/synthesis-v1"
+out_dir <- if (length(args) >= 3L) args[[3L]] else "outputs/goal011/synthesis-v2"
 main(assessment_dir, forecast_dir, out_dir)
