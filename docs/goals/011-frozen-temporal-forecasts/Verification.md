@@ -57,3 +57,18 @@ are in Runbook.md.
 Later Judbury detections and Huon Ridge remain unopened. Independent clearance
 of the actual archived, committed predictive objects is still required before
 outcome access.
+
+## Completion and transfer
+
+23 September 2026: verified remote `COMPLETE` and exit 0 at the unchanged
+generation commit. All six profiles report `predictions_complete_unscored`:
+4,000 draws for the primary baseline, primary spatial and wider-tail baseline;
+6,000 for each of the three wider-prior spatial profiles. The log has no
+warnings or errors. The remote working tree is clean.
+
+The entire run was copied locally. All 31 receipt-listed hashes match and the
+32-file run directory has no missing or additional files. The complete
+prediction archive, including all six RDS objects and the log/exit files, is
+preserved under `evidence/` with its SHA-256 and restore instructions. These
+are generation and transfer checks; the independent all-draw audit is recorded
+in PredictionAudit.md before any outcome access.
