@@ -7,7 +7,7 @@ options(error = function() {
 })
 for (p in sort(list.files("R", pattern = "[.]R$", full.names = TRUE))) source(p)
 args <- commandArgs(trailingOnly = TRUE)
-out <- if (length(args)) args[1L] else "outputs/goal011/assessment-v2"
+out <- if (length(args)) args[1L] else "outputs/goal011/assessment-v3"
 stopifnot(length(args) <= 1L)
 root <- normalizePath(".")
 base <- "outputs/goal011/forecast-v1"
@@ -76,8 +76,10 @@ stopifnot(nrow(early) == nrow(reference), setequal(key(early[keys]), key(referen
   identical(as.integer(early$detected[match(key(reference[keys]), key(early[keys]))]),
             as.integer(reference$detected)))
 ek <- c("camera_id", "occasion_id")
+effort_reference <- transform(contract$effort,
+  occasion_id = sprintf("occ_%03d", occasion_index))
 stopifnot(nrow(w$effort_weekly) == nrow(contract$effort),
-  identical(w$effort_weekly$active_days[match(key(contract$effort[ek]), key(w$effort_weekly[ek]))],
+  identical(w$effort_weekly$active_days[match(key(effort_reference[ek]), key(w$effort_weekly[ek]))],
             contract$effort$active_days))
 future_effort <- read.csv("config/goal011_future_effort.csv")
 stopifnot(identical(

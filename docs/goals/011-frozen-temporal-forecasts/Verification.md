@@ -117,3 +117,13 @@ to the existing output-directory guard. No observation data were read. Its
 `goal011` namespace and a new assessment identity `assessment-v2`; forecasts,
 scoring function, periods and scientific rules are unchanged. The repair was
 committed before retrying.
+
+First bounded outcome access occurred at **2026-09-23 01:38:27 UTC** in
+`assessment-v2`, commit `f2d64c5`. The independent clearance and prediction
+archives were already committed. All first-year incidence cells matched, then
+the runner stopped because the effort-reference table uses `occasion_index`
+rather than `occasion_id`. No scores were produced. The failed directory,
+access receipt and log are preserved. The repair constructs the established
+`occ_%03d` key from the frozen integer index, and was frozen for a new
+`assessment-v3` run. It changes no effort value, outcome rule, prediction or
+score. The first-access time remains that of v2, irrespective of retry success.

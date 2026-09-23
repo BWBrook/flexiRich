@@ -251,7 +251,7 @@ build_plot <- function(summary, paths, observed, out_dir) {
 }
 
 main <- function(
-  assessment_dir = "outputs/goal011/assessment-v2",
+  assessment_dir = "outputs/goal011/assessment-v3",
   forecast_dir = "outputs/goal011/forecast-v1",
   out_dir = "outputs/goal011/synthesis-v1"
 ) {
@@ -411,7 +411,7 @@ args <- commandArgs(trailingOnly = TRUE)
 if (length(args) > 3L) {
   fail("Usage: Rscript scripts/summarise_goal011_assessment.R [assessment_dir] [forecast_dir] [synthesis_dir]")
 }
-assessment_dir <- if (length(args) >= 1L) args[[1L]] else "outputs/goal011/assessment-v2"
+assessment_dir <- if (length(args) >= 1L) args[[1L]] else "outputs/goal011/assessment-v3"
 forecast_dir <- if (length(args) >= 2L) args[[2L]] else "outputs/goal011/forecast-v1"
 out_dir <- if (length(args) >= 3L) args[[3L]] else "outputs/goal011/synthesis-v1"
 main(assessment_dir, forecast_dir, out_dir)
