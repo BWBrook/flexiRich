@@ -36,3 +36,8 @@ test-goal011:
 
 goal011-check:
 	Rscript scripts/run_goal011_forecasts.R check
+
+.PHONY: test-goal012
+
+test-goal012:
+	Rscript -e 'testthat::test_dir("tests/testthat", filter = "goal012", reporter = "summary", stop_on_failure = TRUE, stop_on_warning = TRUE)'

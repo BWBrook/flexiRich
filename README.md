@@ -1,5 +1,14 @@
 # flexiRich
 
+[Goal012](docs/goals/012-post-assessment-timing/Decision.md) completed a
+post-assessment diagnosis of the full Judbury timing record. Detections remain
+clustered after conditioning on camera movements, recurring seasons and
+13-week totals. The result supports a temporal encounter-process repair but
+does not identify a unique mechanism or validate unseen richness. The original
+incidence, effort and Goal011 forecasts remain unchanged. See the
+[runbook](docs/goals/012-post-assessment-timing/Runbook.md) for reproducible
+tables, figures and conditional controls.
+
 [Goal011](docs/goals/011-frozen-temporal-forecasts/Decision.md) completed the
 frozen retrospective Judbury forecast assessment. The spatial repair produced
 no resolved advantage in predicting additions; both primary models predicted
@@ -7,7 +16,9 @@ too many redetections, partly offset by more new discoveries than their means
 predicted. Full predictive objects, independent audit, outcome-access receipts,
 all sensitivities and the manuscript figure are preserved. The final addition
 count was historically disclosed, so this is not a blind confirmatory endpoint.
-Temporal formulation now needs field context; Huon Ridge remains unopened.
+The subsequent Goal012 diagnosis incorporates the recorded camera movements
+and Barry's clarification that independent wombat knowledge is from a nearby
+site. Huon Ridge remains unopened.
 
 [Goal010](docs/goals/010-persistent-spatial-comparison/Goal.md) completed the persistent species-by-station comparison using only the
 first Judbury year. Its [decision](docs/goals/010-persistent-spatial-comparison/Decision.md)
