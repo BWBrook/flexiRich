@@ -40,6 +40,31 @@ treated as empirical evidence.
 
 ## Remote handoff
 
-The source commit, remote verification and observed startup are recorded below
-after dispatch. A successful launch does not constitute recovery or support
-for an empirical temporal model.
+Source commit: `df8274015ab5deb9667ce81e2ac545f50f602c73`.
+The incremental source bundle was verified on both hosts, SHA-256
+`502594723fec8d0e06de20d78095a1697f812c52ca9cbf9ee33ad0f0a2ae0de4`.
+The isolated checkout is
+`/data/codex/repos/flexirich-goal013-20261005` on `deep-server-ts`.
+The same 43 test expectations and complete input-receipt check passed there
+before launch. It uses the existing shared R 4.6.1 renv library; no packages
+were installed or changed. The library emits its existing out-of-sync warning,
+so whole-library agreement with the lockfile is not asserted. The relevant
+kernel tests passed in that runtime, and the run saves `session-info.txt`.
+
+Startup was checked at **2026-10-05 02:30:30 UTC** (13:30:30 Hobart):
+
+- Session `flexirich-g013-recovery-v1` was live.
+- Overall status was `RUNNING 500 datasets`; no exit marker existed yet.
+- Eight job directories were active, covering all five synthetic truths.
+- Each had written its first two candidate score rows: 16 completed initial
+  fits, all with convergence code 0.
+- The log recorded the expected explicit job seeds; no initial execution
+  error was present.
+
+Results are written to `outputs/goal013/recovery-v1/` beneath the remote
+checkout, with sibling `.log` and `.exitcode` files. Monitoring was handed
+back at this point in accordance with AGENTS.md. See Runbook.md for exact
+WSL Ubuntu and macOS bash commands. No complete recovery result has yet been
+assessed. A successful launch does not establish recovery or support an
+empirical temporal model. The code and inputs of the running analysis remain
+at the frozen commit; this subsequent edit records its handoff only.
