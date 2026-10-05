@@ -41,3 +41,11 @@ goal011-check:
 
 test-goal012:
 	Rscript -e 'testthat::test_dir("tests/testthat", filter = "goal012", reporter = "summary", stop_on_failure = TRUE, stop_on_warning = TRUE)'
+
+.PHONY: test-goal013 goal013-check
+
+test-goal013:
+	Rscript -e 'testthat::test_dir("tests/testthat", filter = "goal013", reporter = "summary", stop_on_failure = TRUE, stop_on_warning = TRUE)'
+
+goal013-check:
+	Rscript scripts/run_goal013_mechanisms.R check
