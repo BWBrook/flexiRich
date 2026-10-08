@@ -57,3 +57,25 @@ verify `output-sha256.csv`, inspect numerical failures and boundary fits, then
 adjudicate recovery, proper scores, count calibration and diagnostic support
 against Goal.md. A complete run is not a supported biological interpretation.
 Any repair preserves the original artifacts and uses a new committed identity.
+
+## Completed assessment
+
+The run finished with exit 0; all 500 datasets are complete, with two retained
+numerical flags among 4,000 fits. The completed scientific assessment is in
+[Decision.md](Decision.md). The session has ended; the status commands above
+remain the exact commands for both WSL Ubuntu and macOS bash.
+
+The complete production artifacts are now also local at
+`outputs/goal013/recovery-v1/`. Run the bounded postprocessor from the repository
+root to verify their hashes and reconstruct the assessment into a **new** path:
+
+```bash
+Rscript scripts/assess_goal013_results.R outputs/goal013/recovery-v1 outputs/goal013/assessment-replay
+```
+
+It refuses an existing destination, runs no fits, and reads no new field data.
+It verifies event outcomes/cohorts against saved simulated panels, reconstructs
+the count scores and model selections, reports complete parameter bounds, and
+generates the diagnostic figure. The 9 October assessment is preserved under
+`evidence/assessment-v1/` with a manifest. Numeric tables can be compared
+directly; rendered PDF bytes may differ because of embedded creation metadata.

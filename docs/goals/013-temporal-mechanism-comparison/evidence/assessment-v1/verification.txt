@@ -1,0 +1,7 @@
+COMPLETE: post-hoc assessment; frozen run unmodified
+4513 production file hashes and all frozen input hashes verified
+260000 species event rows checked against saved simulated panels
+30000 count scores reconstructed; 1000 selections reproduced
+Post-hoc summaries/bins do not replace the frozen decision rules
+production_manifest_sha256 80416264b13eedd30863b595bf6654d1a509653b6137d4338e2f719356e183a8
+assessment_script_sha256 52e3cd50893cd52f3e1358a218605a64c9a4c7a815289dc89962fa159a61eb82

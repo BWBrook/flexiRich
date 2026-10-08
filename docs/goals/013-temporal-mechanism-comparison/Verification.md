@@ -68,3 +68,31 @@ WSL Ubuntu and macOS bash commands. No complete recovery result has yet been
 assessed. A successful launch does not establish recovery or support an
 empirical temporal model. The code and inputs of the running analysis remain
 at the frozen commit; this subsequent edit records its handoff only.
+
+## Completed-run assessment, 9 October 2026
+
+The launch receipt above describes its historical state. The remote run
+finished on 5 October at 22:04:07 Australia/Hobart with exit code 0. All 500
+jobs completed; 3,998 of 4,000 fits returned code 0 and two retained code 52.
+The session `flexirich-g013-recovery-v1` has ended. Its working directory and
+output locations remain as recorded above and in Runbook.md.
+
+All 4,513 output hashes passed remotely at the completion check, then passed
+again after the complete artifact tree was copied to the corresponding local
+`outputs/goal013/recovery-v1/` path. The assessment also verified every frozen
+input receipt. The production manifest SHA-256 is
+`80416264b13eedd30863b595bf6654d1a509653b6137d4338e2f719356e183a8`.
+
+`scripts/assess_goal013_results.R` checked all 260,000 saved species event rows
+against the simulated panels and training cohorts, reconstructed 30,000 count
+scores, reproduced 1,000 model selections, and verified identical diagnostic
+pair support. It recomputed bounds from saved parameter vectors, including
+upper amplitudes omitted by the frozen boundary field. No fits were rerun.
+
+Compact tables, a visually checked PNG/PDF figure, and their SHA-256 manifest
+are preserved in `evidence/assessment-v1/`. The full local generated assessment
+is at `outputs/goal013/assessment-v1/`. The independent results audit is
+`evidence/results-independent-review.md`; the scientific assessment and
+proposed next comparison are in Decision.md and Fable-review-brief.md. The
+brief remains unsent. Completion of this assessment does not approve a new
+field model or change the original frozen data, fits or selection rules.

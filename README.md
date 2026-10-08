@@ -1,14 +1,16 @@
 # flexiRich
 
-[Goal013](docs/goals/013-temporal-mechanism-comparison/Goal.md) is testing
-whether the Judbury sampling design can distinguish annual variation,
-array-wide persistence and station-specific persistence, with shared station
-drift as a confounding stress. It gives all candidates the same known
-placement totals, so this is a conditional mechanism screen, not a new
-richness estimate. The [Fable reconciliation](docs/goals/013-temporal-mechanism-comparison/Reconciliation.md)
-preserves the evidence and unresolved interpretations; the
+[Goal013](docs/goals/013-temporal-mechanism-comparison/Decision.md) completed
+500 simulated datasets and 4,000 fits. Annual, array-wide and station-specific
+templates are distinguishable under known full-period placement totals, but
+their diagnostic patterns do not reproduce the complete Judbury pattern.
+Shared service variation also produces misleading state-model selections.
+The assessment recommends estimating nuisance variation and testing
+seasonality before advancing a field mechanism; unseen richness remains
+unvalidated. The [Fable review brief](docs/goals/013-temporal-mechanism-comparison/Fable-review-brief.md)
+sets out the next scientific questions, and the
 [runbook](docs/goals/013-temporal-mechanism-comparison/Runbook.md) gives the
-frozen run and status commands.
+frozen run, assessment command and status commands.
 
 [Goal012](docs/goals/012-post-assessment-timing/Decision.md) completed a
 post-assessment diagnosis of the full Judbury timing record. Detections remain
