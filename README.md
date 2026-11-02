@@ -1,5 +1,7 @@
 # flexiRich
 
+> **Status:** developed in the open as a working record. This is work in progress: contents may change, and nothing here is peer-reviewed unless stated.
+
 Research implementation and validation of an effort-aware estimator of
 camera-detectable species richness from a finite candidate pool.
 
@@ -131,3 +133,7 @@ misspecification coverage requirements; F3 also failed the stress-catastrophe
 gate. Goal007 therefore closes as `NO_REGULARISATION_CANDIDATE`. Task 3 was not
 run, and both Judbury detections and Huon Ridge remain sealed. See the
 [Goal007 decision](docs/goals/007-rare-encounter-regularisation/Decision.md).
+
+## Licence
+
+Code is released under the [MIT Licence](LICENSE). Text, figures and data created for this project are released under [CC BY-SA 4.0](LICENSE-CONTENT). Third-party material keeps its own terms where stated.
